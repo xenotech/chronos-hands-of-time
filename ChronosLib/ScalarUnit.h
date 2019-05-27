@@ -29,7 +29,7 @@ template<typename Rep = CanonRep<>,
     // Public types for ScalarUnit, used for all representations.
     using Seconds = UnitSeconds;
     using Picos = UnitPicos;
-    using Both = UnitBoth;
+    using Both = UnitValue;
 
   private:
     // Fields.
@@ -44,7 +44,7 @@ template<typename Rep = CanonRep<>,
     constexpr ScalarUnit(ScalarUnit&&) noexcept = default;
 
     template<typename RepU, typename AdapterU>
-    constexpr explicit ScalarUnit(const ScalarUnit<RepU, AdapterU>& rhs) : m_adapter(rhs.both()) {}
+    constexpr explicit ScalarUnit(const ScalarUnit<RepU, AdapterU>& rhs) : m_adapter(rhs.value()) {}
 
     constexpr ScalarUnit& operator=(const ScalarUnit& rhs) = default;
     constexpr ScalarUnit& operator=(ScalarUnit&&) noexcept = default;
@@ -52,7 +52,7 @@ template<typename Rep = CanonRep<>,
 
     template<typename RepU, typename AdapterU>
     constexpr ScalarUnit& operator=(const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
-      m_adapter.both(rhs.both());
+      m_adapter.value(rhs.value());
       return *this;
     }
 
@@ -96,7 +96,7 @@ template<typename Rep = CanonRep<>,
     // Accessors.
     constexpr Seconds seconds() const noexcept { return m_adapter.seconds(); }
     constexpr Picos subseconds() const noexcept { return m_adapter.subseconds(); }
-    constexpr UnitBoth both() const noexcept { return m_adapter.both(); }
+    constexpr UnitValue value() const noexcept { return m_adapter.value(); }
 
     // Arithmetic operators.
 
@@ -104,13 +104,13 @@ template<typename Rep = CanonRep<>,
     // Note than NaN remains the same.
     constexpr ScalarUnit operator-() {
       // TODO: Maybe optimize to avoid scaling.
-      const auto& sss = both();
+      const auto& sss = value();
       return ScalarUnit(-sss.s, -sss.ss);
     }
 
     template<typename RepU, typename AdapterU>
     constexpr ::std::strong_ordering operator<=>(const ScalarUnit<RepU, AdapterU>& rhs) const noexcept {
-      const auto& sssL = both(), sssR = rhs.both();
+      const auto& sssL = value(), sssR = rhs.value();
       if (sssL.s == NaN || sssR.s == NaN) return 1 <=> 0;
       if (auto cmp = sssL.s <=> sssR.s; cmp != 0) return cmp;
       return sssL.ss <=> sssR.ss;
@@ -118,14 +118,14 @@ template<typename Rep = CanonRep<>,
 
     template<typename RepU, typename AdapterU>
     constexpr ScalarUnit& operator+=(const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
-      auto sssL = both(), sssR = rhs.both();
+      auto sssL = value(), sssR = rhs.value();
       // If either is special value, result is special.
       auto catL = toCategory(sssL.s), catR = toCategory(sssR.s);
       if (catL != Category::Num || catR != Category::Num) return *this = addCat(catL, catR);
       bool negL = m_adapter.isNegative(), negR = rhs.m_adapter.isNegative();
       sssL.s += sssR.s;
       sssL.ss += sssR.ss;
-      m_adapter.both(sssL);
+      m_adapter.value(sssL);
       // Same sign means addition, which overflows when sign flips.
       if (negL == negR && m_adapter.isNegative() != negL) {
         *this = negL ? Category::InfN : Category::InfP;
@@ -154,7 +154,7 @@ template<typename Rep = CanonRep<>,
     std::ostream& dump(std::ostream& os) const noexcept {
       Category cat = category();
       if (cat == Category::Num) {
-        auto sss = both();
+        auto sss = value();
         if (sss.s < 0 || sss.ss < 0) {
           os << "-";
           sss.s = -sss.s;

@@ -24,7 +24,7 @@ namespace chronos {
 // UnitPicos keeps the remainder.
 using UnitSeconds = int64_t;
 using UnitPicos = int64_t;
-struct UnitBoth { UnitSeconds s; UnitPicos ss; };
+struct UnitValue { UnitSeconds s; UnitPicos ss; };
 
 // These constants are for an idealized calendar, with no time zones or leap
 // days or leap years or anything tricky. They are not a replacement for

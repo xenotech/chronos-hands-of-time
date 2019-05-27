@@ -100,7 +100,7 @@ template<typename Wholes = UnitSeconds,
     constexpr CanonRep(const CanonRep& unit) noexcept = default;
     constexpr CanonRep(CanonRep&& unit) noexcept = default;
     constexpr explicit CanonRep(UnitSeconds s, UnitPicos ss = 0) noexcept : CanonRep(create(s, ss)) {}
-    constexpr explicit CanonRep(const UnitBoth& sss) noexcept : CanonRep(create(sss)) {}
+    constexpr explicit CanonRep(const UnitValue& sss) noexcept : CanonRep(create(sss)) {}
 
     constexpr CanonRep& operator=(const CanonRep& unit) noexcept = default;
     constexpr CanonRep& operator=(CanonRep&& unit) noexcept = default;
@@ -115,9 +115,9 @@ template<typename Wholes = UnitSeconds,
     constexpr UnitPicos subseconds() const noexcept { return calcPicos(); }
     constexpr void subseconds(UnitPicos ss) noexcept { *this = create(seconds(), ss); }
 
-    constexpr UnitBoth both() const noexcept { return { seconds(), subseconds() }; }
-    constexpr void both(UnitSeconds s, UnitPicos ss) noexcept { *this = create(s, ss); }
-    constexpr void both(const UnitBoth& sss) noexcept { *this = create(sss); }
+    constexpr UnitValue value() const noexcept { return { seconds(), subseconds() }; }
+    constexpr void value(UnitSeconds s, UnitPicos ss) noexcept { *this = create(s, ss); }
+    constexpr void value(const UnitValue& sss) noexcept { *this = create(sss); }
 
     // Internal properties.
     constexpr Wholes wholes() const noexcept { return m_wholes; }
@@ -139,11 +139,11 @@ template<typename Wholes = UnitSeconds,
     constexpr CanonRep create(UnitSeconds s, UnitPicos ss) noexcept {
       if (s < 0 && ss > 0) ss = -ss;
       else if (s > 0 && ss < 0) s = SecondsTraits<>::NaN;
-      return create(UnitBoth{ s, ss });
+      return create(UnitValue{ s, ss });
     }
 
     // Creates instance from inputs, with rollover, scaling, and saturation.
-    constexpr CanonRep create(UnitBoth sss) noexcept {
+    constexpr CanonRep create(UnitValue sss) noexcept {
       // Nobody puts NaN in a corner.
       if (sss.s == SecondsTraits<>::NaN) {
         if constexpr (!usesUnitSeconds) sss.s = NaN;

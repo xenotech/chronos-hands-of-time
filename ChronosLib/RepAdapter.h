@@ -81,7 +81,7 @@ struct RepAdapter : public SecondsTraits<> {
   Rep m_rep;
 
   constexpr RepAdapter() noexcept : m_rep() {}
-  explicit constexpr RepAdapter(const UnitBoth& sss) noexcept : m_rep(sss) {}
+  explicit constexpr RepAdapter(const UnitValue& sss) noexcept : m_rep(sss) {}
   explicit constexpr RepAdapter(const Rep& rep) noexcept : m_rep(rep) {}
   explicit constexpr RepAdapter(Rep&& rep) noexcept : m_rep(std::move(rep)) {}
   constexpr RepAdapter(UnitSeconds s, UnitPicos ss) noexcept : m_rep(s, ss) {}
@@ -102,19 +102,19 @@ struct RepAdapter : public SecondsTraits<> {
   constexpr UnitPicos subseconds() const noexcept { return m_rep.subseconds(); }
   constexpr void subseconds(UnitPicos p) noexcept { m_rep.subseconds(p); }
 
-  constexpr UnitBoth both() const noexcept { return m_rep.both(); }
-  constexpr void both(const UnitBoth& sss) noexcept { m_rep.both(sss); }
-  constexpr void both(UnitSeconds s, UnitPicos ss) noexcept { m_rep.both(s, ss); }
+  constexpr UnitValue value() const noexcept { return m_rep.value(); }
+  constexpr void value(const UnitValue& sss) noexcept { m_rep.value(sss); }
+  constexpr void value(UnitSeconds s, UnitPicos ss) noexcept { m_rep.value(s, ss); }
 
   constexpr bool isNegative() const noexcept { return m_rep.wholes() < 0 || m_rep.fractions() < 0; }
 
   constexpr void category(Category cat) {
     switch (cat) {
     case Category::Num:
-      both(0, 0);
+      value(0, 0);
       break;
     case Category::NaN:
-      both(+1, -1);
+      value(+1, -1);
       break;
     case Category::InfN:
       seconds(InfN);
