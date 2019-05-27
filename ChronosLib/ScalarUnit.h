@@ -58,7 +58,6 @@ template<typename Rep = CanonRep<>,
 
     // Categories.
     constexpr Category category() const noexcept { return toCategory(seconds()); }
-
     constexpr void category(Category cat) { m_adapter.category(cat); }
 
     // Returns whether it has a numerical value, as opposed to a special one.
@@ -109,7 +108,7 @@ template<typename Rep = CanonRep<>,
     }
 
     template<typename RepU, typename AdapterU>
-    constexpr ::std::strong_ordering operator<=>(const ScalarUnit<RepU, AdapterU>& rhs) const noexcept {
+    constexpr ::std::partial_ordering operator<=>(const ScalarUnit<RepU, AdapterU>& rhs) const noexcept {
       const auto& sssL = value(), sssR = rhs.value();
       if (sssL.s == NaN || sssR.s == NaN) return 1 <=> 0;
       if (auto cmp = sssL.s <=> sssR.s; cmp != 0) return cmp;
@@ -123,8 +122,7 @@ template<typename Rep = CanonRep<>,
       auto catL = toCategory(sssL.s), catR = toCategory(sssR.s);
       if (catL != Category::Num || catR != Category::Num) return *this = addCat(catL, catR);
       bool negL = m_adapter.isNegative(), negR = rhs.m_adapter.isNegative();
-      sssL.s += sssR.s;
-      sssL.ss += sssR.ss;
+      sssL.s += sssR.s; sssL.ss += sssR.ss;
       m_adapter.value(sssL);
       // Same sign means addition, which overflows when sign flips.
       if (negL == negR && m_adapter.isNegative() != negL) {
