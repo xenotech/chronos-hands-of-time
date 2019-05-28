@@ -38,9 +38,18 @@ template<typename Rep = CanonRep<>,
   public:
     // Ctors.
     constexpr ScalarUnit() noexcept : m_adapter() {}
-    constexpr explicit ScalarUnit(UnitSeconds s, UnitPicos ss = 0) noexcept : m_adapter(s, ss) {}
+
+    template <typename T, typename std::enable_if_t<std::is_integral<T>::value, int> = 0>
+    constexpr explicit ScalarUnit(T s, UnitPicos ss = 0) noexcept : m_adapter(UnitSeconds(s), ss) {}
+
+    // Warning: This is not at all performant. It's not even eval'ed as constexpr.
+    template <typename T, typename std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+    constexpr explicit ScalarUnit(T sss) noexcept : m_adapter(fromFloat(sss)) {}
+
     constexpr explicit ScalarUnit(Category cat) noexcept { category(cat); }
+
     constexpr ScalarUnit(const ScalarUnit&) noexcept = default;
+
     constexpr ScalarUnit(ScalarUnit&&) noexcept = default;
 
     template<typename RepU, typename AdapterU>
@@ -154,9 +163,7 @@ template<typename Rep = CanonRep<>,
       if (cat == Category::Num) {
         auto sss = value();
         if (sss.s < 0 || sss.ss < 0) {
-          os << "-";
-          sss.s = -sss.s;
-          sss.ss = -sss.ss;
+          os << "-"; sss.s = -sss.s; sss.ss = -sss.ss;
         } else if (sss.s > 0) os << "+";
         const auto& guard = makeStreamFillGuard(os, '0');
         os << sss.s << "." << std::setw(12) << sss.ss << "s";
@@ -165,6 +172,12 @@ template<typename Rep = CanonRep<>,
       }
 
       return os << " [" << m_adapter << "]";
+    }
+
+    static constexpr UnitValue fromFloat(double sss) noexcept {
+      double s = trunc(sss); double ss = sss - s;
+      return UnitValue{ static_cast<UnitSeconds>(s),
+        static_cast<UnitSeconds>(ss * PicosPerSecond) };
     }
 };
 

@@ -107,6 +107,35 @@ TEST(CtorDefault, ChronosTest) {
   testCtors<ScalarUnit<CanonRep<int16_t, int16_t>>>();
 }
 
+TEST(CtorFloat, ChronosTest) {
+  using Unit = ScalarUnit<>;
+  Unit a, b;
+  a = Unit(1);
+  b = Unit(1.0);
+  EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  a = Unit(-1);
+  b = Unit(-1.0);
+  EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  a = Unit(1, PicosPerSecond / 2);
+  b = Unit(1.5);
+  EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  a = Unit(-1, PicosPerSecond / 2);
+  b = Unit(-1.5);
+  EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  a = Unit(1, 250000000000);
+  b = Unit(1.250000000000);
+  EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  a = Unit(1, 1);
+  b = Unit(1.000000000001);
+  EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  a = Unit(1, 1);
+  b = Unit(1.000000000001);
+  EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  a = Unit(Unit::Max);
+  b = Unit(double(Unit::Max));
+  EXPECT_NE(a, b); DUMP(a); DUMP(b);
+}
+
 TEST(CtorDefaultCopyAB, ChronosTest) {
   using UnitA = ScalarUnit<CanonRep<int8_t, int8_t>>;
   using UnitB = ScalarUnit<CanonRep<int16_t, int16_t>>;
