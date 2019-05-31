@@ -58,227 +58,244 @@ namespace chronos {
 //
 // TODO: Modify to allow Wholes or Fractions to be void (or equivalent) and
 // ensure that it still works correctly. Finish the scaling code.
-template<typename Wholes = UnitSeconds,
-  typename Fractions = UnitPicos,
-  typename SecondsToWholes = std::ratio<1, 1>,
-  typename FractionsToSeconds = std::ratio<PicosPerSecond, 1>>
-  class CanonRep : public SecondsTraits<Wholes> {
-  public:
-    using CanonRepT = CanonRep<Wholes, Fractions, SecondsToWholes, FractionsToSeconds>;
-    using WholesT = Wholes;
-    using FractionsT = Fractions;
-    using SecondsToWholesV = SecondsToWholes;
-    using FractionsToSecondsV = FractionsToSeconds;
+template<typename Wholes = UnitSeconds, typename Fractions = UnitPicos,
+    typename SecondsToWholes = std::ratio<1, 1>,
+    typename FractionsToSeconds = std::ratio<PicosPerSecond, 1>>
+class CanonRep : public SecondsTraits<Wholes> {
+public:
+  using CanonRepT =
+      CanonRep<Wholes, Fractions, SecondsToWholes, FractionsToSeconds>;
+  using WholesT = Wholes;
+  using FractionsT = Fractions;
+  using SecondsToWholesV = SecondsToWholes;
+  using FractionsToSecondsV = FractionsToSeconds;
 
-    static constexpr const FractionsT maxFractions =
+  static constexpr const FractionsT maxFractions =
       std::numeric_limits<Fractions>::max();
-    static constexpr const UnitPicos fractionsPerSecond =
-      std::min(PicosPerSecond - 1,
-        static_cast<UnitPicos>(maxFractions)) + 1;
-    static constexpr const bool usesUnitSeconds =
+  static constexpr const UnitPicos fractionsPerSecond =
+      std::min(PicosPerSecond - 1, static_cast<UnitPicos>(maxFractions)) + 1;
+  static constexpr const bool usesUnitSeconds =
       std::is_same_v<UnitSeconds, Wholes>;
-    static constexpr const bool usesUnitPicos =
+  static constexpr const bool usesUnitPicos =
       std::is_same_v<UnitPicos, Fractions>;
 
-    static_assert(std::numeric_limits<Wholes>::is_signed,
-      "Wholes must be signed");
-    static_assert(std::numeric_limits<Wholes>::is_integer,
-      "Wholes must be integral");
-    static_assert(std::numeric_limits<Fractions>::is_signed,
-      "Fractions must be signed");
-    static_assert(std::numeric_limits<Fractions>::is_integer,
-      "Fractions must be integral");
+  static_assert(
+      std::numeric_limits<Wholes>::is_signed, "Wholes must be signed");
+  static_assert(
+      std::numeric_limits<Wholes>::is_integer, "Wholes must be integral");
+  static_assert(
+      std::numeric_limits<Fractions>::is_signed, "Fractions must be signed");
+  static_assert(
+      std::numeric_limits<Fractions>::is_integer, "Fractions must be integral");
 
-  private:
-    // Fields.
-    Wholes m_wholes;
-    Fractions m_fractions;
+private:
+  // Fields.
+  Wholes m_wholes;
+  Fractions m_fractions;
 
-  public:
-    // Ctors.
-    constexpr CanonRep() noexcept : m_wholes(0), m_fractions(0) {}
-    constexpr CanonRep(const CanonRep& unit) noexcept = default;
-    constexpr CanonRep(CanonRep&& unit) noexcept = default;
-    constexpr explicit CanonRep(UnitSeconds s, UnitPicos ss = 0) noexcept : CanonRep(create(s, ss)) {}
-    constexpr explicit CanonRep(const UnitValue& sss) noexcept : CanonRep(create(sss)) {}
+public:
+  // Ctors.
+  constexpr CanonRep() noexcept : m_wholes(0), m_fractions(0) {}
+  constexpr CanonRep(const CanonRep& unit) noexcept = default;
+  constexpr CanonRep(CanonRep&& unit) noexcept = default;
+  constexpr explicit CanonRep(UnitSeconds s, UnitPicos ss = 0) noexcept
+      : CanonRep(create(s, ss)) {}
+  constexpr explicit CanonRep(const UnitValue& sss) noexcept
+      : CanonRep(create(sss)) {}
 
-    constexpr CanonRep& operator=(const CanonRep& unit) noexcept = default;
-    constexpr CanonRep& operator=(CanonRep&& unit) noexcept = default;
+  constexpr CanonRep& operator=(const CanonRep& unit) noexcept = default;
+  constexpr CanonRep& operator=(CanonRep&& unit) noexcept = default;
 
-    enum class Raw { raw };
-    constexpr CanonRep(Raw, Wholes w, Fractions f = 0) noexcept : m_wholes(w), m_fractions(f) {}
+  enum class Raw { raw };
+  constexpr CanonRep(Raw, Wholes w, Fractions f = 0) noexcept
+      : m_wholes(w), m_fractions(f) {}
 
-    // Properties.
-    constexpr UnitSeconds seconds() const noexcept { return calcSeconds(); }
-    constexpr void seconds(UnitSeconds s) noexcept { *this = create(s, fractions()); }
+  // Properties.
+  constexpr UnitSeconds seconds() const noexcept { return calcSeconds(); }
+  constexpr void seconds(UnitSeconds s) noexcept {
+    *this = create(s, fractions());
+  }
 
-    constexpr UnitPicos subseconds() const noexcept { return calcPicos(); }
-    constexpr void subseconds(UnitPicos ss) noexcept { *this = create(seconds(), ss); }
+  constexpr UnitPicos subseconds() const noexcept { return calcPicos(); }
+  constexpr void subseconds(UnitPicos ss) noexcept {
+    *this = create(seconds(), ss);
+  }
 
-    constexpr UnitValue value() const noexcept { return { seconds(), subseconds() }; }
-    constexpr void value(UnitSeconds s, UnitPicos ss) noexcept { *this = create(s, ss); }
-    constexpr void value(const UnitValue& sss) noexcept { *this = create(sss); }
+  constexpr UnitValue value() const noexcept {
+    return {seconds(), subseconds()};
+  }
+  constexpr void value(UnitSeconds s, UnitPicos ss) noexcept {
+    *this = create(s, ss);
+  }
+  constexpr void value(const UnitValue& sss) noexcept { *this = create(sss); }
 
-    // Internal properties.
-    constexpr Wholes wholes() const noexcept { return m_wholes; }
-    constexpr void wholes(Fractions f) noexcept { m_wholes = f; }
+  // Internal properties.
+  constexpr Wholes wholes() const noexcept { return m_wholes; }
+  constexpr void wholes(Fractions f) noexcept { m_wholes = f; }
 
-    constexpr Fractions fractions() const noexcept { return m_fractions; }
-    constexpr void fractions(Fractions f) noexcept { m_fractions = f; }
+  constexpr Fractions fractions() const noexcept { return m_fractions; }
+  constexpr void fractions(Fractions f) noexcept { m_fractions = f; }
 
-    std::ostream& dump(std::ostream& os) const noexcept {
-      auto flagScope = makeStreamFlagsGuard(os, std::ios::hex);
-      return os << static_cast<UnitSeconds>(wholes()) << "."
-        << static_cast<UnitPicos>(fractions())
-        << " <" << sizeof(WholesT) << ":" << sizeof(FractionsT) << ">";
-    }
+  std::ostream& dump(std::ostream& os) const noexcept {
+    auto flagScope = makeStreamFlagsGuard(os, std::ios::hex);
+    return os << static_cast<UnitSeconds>(wholes()) << "."
+              << static_cast<UnitPicos>(fractions()) << " <" << sizeof(WholesT)
+              << ":" << sizeof(FractionsT) << ">";
+  }
 
-  private:
-    // Create instance from inputs, adjusting signs first. Cleans up the
-    // separate inputs to make sure they're compatible.
-    constexpr CanonRep create(UnitSeconds s, UnitPicos ss) noexcept {
-      if (s < 0 && ss > 0) ss = -ss;
-      else if (s > 0 && ss < 0) s = SecondsTraits<>::NaN;
-      return create(UnitValue{ s, ss });
-    }
+private:
+  // Create instance from inputs, adjusting signs first. Cleans up the
+  // separate inputs to make sure they're compatible.
+  constexpr CanonRep create(UnitSeconds s, UnitPicos ss) noexcept {
+    if (s < 0 && ss > 0)
+      ss = -ss;
+    else if (s > 0 && ss < 0)
+      s = SecondsTraits<>::NaN;
+    return create(UnitValue{s, ss});
+  }
 
-    // Creates instance from inputs, with rollover, scaling, and saturation.
-    constexpr CanonRep create(UnitValue sss) noexcept {
-      // Nobody puts NaN in a corner.
-      if (sss.s == SecondsTraits<>::NaN) {
-        if constexpr (!usesUnitSeconds) sss.s = NaN;
+  // Creates instance from inputs, with rollover, scaling, and saturation.
+  constexpr CanonRep create(UnitValue sss) noexcept {
+    // Nobody puts NaN in a corner.
+    if (sss.s == SecondsTraits<>::NaN) {
+      if constexpr (!usesUnitSeconds) sss.s = NaN;
+      sss.ss = 0;
+    } else {
+      // Roll over excess subseconds.
+      if (sss.ss <= -PicosPerSecond || sss.ss >= PicosPerSecond) {
+        sss.s += sss.ss / PicosPerSecond;
+        sss.ss %= PicosPerSecond;
+      }
+      // Saturate to infinity, with scaling.
+      if (sss.s > Max) {
+        if constexpr (!usesUnitSeconds) sss.s = InfP;
         sss.ss = 0;
-      } else {
-        // Roll over excess subseconds.
-        if (sss.ss <= -PicosPerSecond || sss.ss >= PicosPerSecond) {
-          sss.s += sss.ss / PicosPerSecond;
-          sss.ss %= PicosPerSecond;
-        }
-        // Saturate to infinity, with scaling.
-        if (sss.s > Max) {
-          if constexpr (!usesUnitSeconds) sss.s = InfP;
-          sss.ss = 0;
-        } else if (sss.s < Min) {
-          if constexpr (!usesUnitSeconds) sss.s = InfN;
-          sss.ss = 0;
-        }
+      } else if (sss.s < Min) {
+        if constexpr (!usesUnitSeconds) sss.s = InfN;
+        sss.ss = 0;
       }
-      Wholes w = calcWholes(sss.s);
-      Fractions f = calcFractions(sss.ss);
-      return CanonRep(Raw::raw, w, f);
     }
+    Wholes w = calcWholes(sss.s);
+    Fractions f = calcFractions(sss.ss);
+    return CanonRep(Raw::raw, w, f);
+  }
 
-    static constexpr Wholes calcWholes(UnitSeconds s) noexcept {
+  static constexpr Wholes calcWholes(UnitSeconds s) noexcept {
+    // TODO: Scale.
+    return static_cast<Wholes>(s);
+  }
+
+  constexpr UnitSeconds calcSeconds() const noexcept {
+    UnitSeconds s = m_wholes;
+    // If necessary, scale infinities up.
+    if constexpr (!usesUnitSeconds) {
+      if (m_wholes > Max)
+        s = SecondsTraits<>::InfP;
+      else if (m_wholes < Min) {
+        if (m_wholes == NaN)
+          s = SecondsTraits<>::NaN;
+        else
+          s = SecondsTraits<>::InfN;
+      }
+    }
+    return s;
+  }
+
+  static constexpr Fractions calcFractions(UnitPicos p) {
+    Fractions f;
+    if constexpr (usesUnitPicos)
+      f = p;
+    else {
       // TODO: Scale.
-      return static_cast<Wholes>(s);
+      f = static_cast<Fractions>(p);
     }
+    return f;
+  }
 
-    constexpr UnitSeconds calcSeconds() const noexcept {
-      UnitSeconds s = m_wholes;
-      // If necessary, scale infinities up.
-      if constexpr (!usesUnitSeconds) {
-        if (m_wholes > Max)
-          s = SecondsTraits<>::InfP;
-        else if (m_wholes < Min) {
-          if (m_wholes == NaN) s = SecondsTraits<>::NaN;
-          else s = SecondsTraits<>::InfN;
-        }
-      }
-      return s;
+  constexpr UnitPicos calcPicos() const noexcept {
+    UnitPicos p = m_fractions;
+    if constexpr (!usesUnitPicos) {
+      // TODO: Scale.
     }
-
-    static constexpr Fractions calcFractions(UnitPicos p) {
-      Fractions f;
-      if constexpr (usesUnitPicos)
-        f = p;
-      else {
-        // TODO: Scale.
-        f = static_cast<Fractions>(p);
-      }
-      return f;
-    }
-
-    constexpr UnitPicos calcPicos() const noexcept {
-      UnitPicos p = m_fractions;
-      if constexpr (!usesUnitPicos) {
-        // TODO: Scale.
-      }
-      return p;
-    }
+    return p;
+  }
 };
 
 using DefaultBaseRep = CanonRep<UnitSeconds, UnitPicos>;
-}
+} // namespace chronos
 
 // TODO: This needs testing.
 template<typename Wholes, typename Fractions, typename SecondsToWholes,
-  typename FractionsToSeconds>
-  class std::numeric_limits<chronos::CanonRep<Wholes, Fractions, SecondsToWholes,
-  FractionsToSeconds>> {
-  public:
-    using CanonRepT = chronos::CanonRep<Wholes, Fractions, SecondsToWholes,
-      FractionsToSeconds>;
-    using SecondsT = typename CanonRepT::WholesT;
-    using FractionsT = typename CanonRepT::FractionsT;
+    typename FractionsToSeconds>
+class std::numeric_limits<
+    chronos::CanonRep<Wholes, Fractions, SecondsToWholes, FractionsToSeconds>> {
+public:
+  using CanonRepT =
+      chronos::CanonRep<Wholes, Fractions, SecondsToWholes, FractionsToSeconds>;
+  using SecondsT = typename CanonRepT::WholesT;
+  using FractionsT = typename CanonRepT::FractionsT;
 
-    [[nodiscard]] static constexpr CanonRepT(min)() noexcept {
-      return CanonRepT(CanonRepT::Raw::raw, CanonRepT::Min, FractionsToSeconds::Num - 1);
-    }
+  [[nodiscard]] static constexpr CanonRepT(min)() noexcept {
+    return CanonRepT(
+        CanonRepT::Raw::raw, CanonRepT::Min, FractionsToSeconds::Num - 1);
+  }
 
-    [[nodiscard]] static constexpr CanonRepT(max)() noexcept {
-      return CanonRepT(CanonRepT::Raw::raw, CanonRepT::Max, FractionsToSeconds::Num - 1);
-    }
+  [[nodiscard]] static constexpr CanonRepT(max)() noexcept {
+    return CanonRepT(
+        CanonRepT::Raw::raw, CanonRepT::Max, FractionsToSeconds::Num - 1);
+  }
 
-    [[nodiscard]] static constexpr CanonRepT lowest() noexcept {
-      return (min)();
-    }
+  [[nodiscard]] static constexpr CanonRepT lowest() noexcept { return (min)(); }
 
-    [[nodiscard]] static constexpr CanonRepT epsilon() noexcept {
-      return CanonRepT(CanonRepT::Raw::raw, 0, FractionsToSeconds::Num - 1);
-    }
+  [[nodiscard]] static constexpr CanonRepT epsilon() noexcept {
+    return CanonRepT(CanonRepT::Raw::raw, 0, FractionsToSeconds::Num - 1);
+  }
 
-    [[nodiscard]] static constexpr CanonRepT round_error() noexcept {
-      return (epsilon)();
-    }
+  [[nodiscard]] static constexpr CanonRepT round_error() noexcept {
+    return (epsilon)();
+  }
 
-    [[nodiscard]] static constexpr CanonRepT denorm_min() noexcept {
-      return 0;
-    }
+  [[nodiscard]] static constexpr CanonRepT denorm_min() noexcept { return 0; }
 
-    [[nodiscard]] static constexpr CanonRepT infinity() noexcept {
-      return CanonRepT(CanonRepT::Raw::raw, CanonRepT::InfP);
-    }
+  [[nodiscard]] static constexpr CanonRepT infinity() noexcept {
+    return CanonRepT(CanonRepT::Raw::raw, CanonRepT::InfP);
+  }
 
-    [[nodiscard]] static constexpr CanonRepT quiet_NaN() noexcept {
-      return CanonRepT(CanonRepT::Raw::raw, CanonRepT::NaN);
-    }
+  [[nodiscard]] static constexpr CanonRepT quiet_NaN() noexcept {
+    return CanonRepT(CanonRepT::Raw::raw, CanonRepT::NaN);
+  }
 
-    [[nodiscard]] static constexpr CanonRepT signaling_NaN() noexcept {
-      return CanonRepT(CanonRepT::Raw::raw, CanonRepT::NaN, FractionsToSeconds::Num - 1);
-    }
+  [[nodiscard]] static constexpr CanonRepT signaling_NaN() noexcept {
+    return CanonRepT(
+        CanonRepT::Raw::raw, CanonRepT::NaN, FractionsToSeconds::Num - 1);
+  }
 
-    static constexpr float_denorm_style has_denorm = denorm_absent;
-    static constexpr bool has_denorm_loss = false;
-    static constexpr bool has_infinity = true;
-    static constexpr bool has_quiet_NaN = true;
-    static constexpr bool has_signaling_NaN = false;
-    static constexpr bool is_bounded = true;
-    static constexpr bool is_exact = true;
-    static constexpr bool is_iec559 = false;
-    static constexpr bool is_integer = false;
-    static constexpr bool is_modulo = false;
-    static constexpr bool is_signed = true;
-    static constexpr bool is_specialized = true;
-    static constexpr bool tinyness_before = false;
-    static constexpr bool traps = false;
-    static constexpr float_round_style round_style = round_toward_zero;
-    static constexpr int digits = std::numeric_limits<chronos::UnitSeconds>::digits + std::numeric_limits<chronos::UnitPicos>::digits;
-    static constexpr int digits10 = std::numeric_limits<SecondsT>::digits10 + std::numeric_limits<chronos::UnitPicos>::digits10;
-    static constexpr int max_digits10 = std::numeric_limits<SecondsT>::max_digits10 +
+  static constexpr float_denorm_style has_denorm = denorm_absent;
+  static constexpr bool has_denorm_loss = false;
+  static constexpr bool has_infinity = true;
+  static constexpr bool has_quiet_NaN = true;
+  static constexpr bool has_signaling_NaN = false;
+  static constexpr bool is_bounded = true;
+  static constexpr bool is_exact = true;
+  static constexpr bool is_iec559 = false;
+  static constexpr bool is_integer = false;
+  static constexpr bool is_modulo = false;
+  static constexpr bool is_signed = true;
+  static constexpr bool is_specialized = true;
+  static constexpr bool tinyness_before = false;
+  static constexpr bool traps = false;
+  static constexpr float_round_style round_style = round_toward_zero;
+  static constexpr int digits =
+      std::numeric_limits<chronos::UnitSeconds>::digits +
+      std::numeric_limits<chronos::UnitPicos>::digits;
+  static constexpr int digits10 = std::numeric_limits<SecondsT>::digits10 +
+      std::numeric_limits<chronos::UnitPicos>::digits10;
+  static constexpr int max_digits10 =
+      std::numeric_limits<SecondsT>::max_digits10 +
       std::numeric_limits<chronos::UnitPicos>::max_digits10;
-    static constexpr int max_exponent = 0;
-    static constexpr int max_exponent10 = 0;
-    static constexpr int min_exponent = 0;
-    static constexpr int min_exponent10 = 0;
-    static constexpr int radix = 2;
+  static constexpr int max_exponent = 0;
+  static constexpr int max_exponent10 = 0;
+  static constexpr int min_exponent = 0;
+  static constexpr int min_exponent10 = 0;
+  static constexpr int radix = 2;
 };

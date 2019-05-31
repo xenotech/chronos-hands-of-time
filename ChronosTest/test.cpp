@@ -133,6 +133,7 @@ TEST(CtorFloat, ChronosTest) {
   EXPECT_EQ(a, b); DUMP(a); DUMP(b);
   a = Unit(Unit::Max);
   b = Unit(double(Unit::Max));
+  EXPECT_TRUE(b.isNaN());
   EXPECT_NE(a, b); DUMP(a); DUMP(b);
 }
 

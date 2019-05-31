@@ -3,6 +3,7 @@
 
 namespace chronos {
 
-const std::string CategoryAsString::CategoryNames[] = { "Num", "NaN", "-Inf", "+Inf" };
+const std::string CategoryAsString::CategoryNames[] = {
+    "Num", "NaN", "-Inf", "+Inf"};
 
 }

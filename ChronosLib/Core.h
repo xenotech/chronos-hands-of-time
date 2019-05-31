@@ -24,7 +24,10 @@ namespace chronos {
 // UnitPicos keeps the remainder.
 using UnitSeconds = int64_t;
 using UnitPicos = int64_t;
-struct UnitValue { UnitSeconds s; UnitPicos ss; };
+struct UnitValue {
+  UnitSeconds s;
+  UnitPicos ss;
+};
 
 // These constants are for an idealized calendar, with no time zones or leap
 // days or leap years or anything tricky. They are not a replacement for
@@ -39,12 +42,7 @@ constexpr const UnitSeconds SecondsPerDay = SecondsPerHour * 24;
 constexpr const UnitSeconds SecondsPerYear = SecondsPerDay * 365;
 
 // Seconds value categories.
-enum class Category {
-  Num,
-  NaN,
-  InfN,
-  InfP
-};
+enum class Category { Num, NaN, InfN, InfP };
 
 struct CategoryAsString {
   static const std::string CategoryNames[];
@@ -93,5 +91,4 @@ struct SecondsTraits {
   }
 };
 
-
-}
+} // namespace chronos

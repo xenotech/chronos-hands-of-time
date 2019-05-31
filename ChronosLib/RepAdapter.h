@@ -71,7 +71,7 @@ namespace chronos {
 //
 // The de facto epoch is 0001-01-01 00:00:00 in the proleptic Gregorian
 // calendar.
-template <typename Rep>
+template<typename Rep>
 struct RepAdapter : public SecondsTraits<> {
   using RepT = Rep;
   using RepLimits = std::numeric_limits<Rep>;
@@ -104,24 +104,20 @@ struct RepAdapter : public SecondsTraits<> {
 
   constexpr UnitValue value() const noexcept { return m_rep.value(); }
   constexpr void value(const UnitValue& sss) noexcept { m_rep.value(sss); }
-  constexpr void value(UnitSeconds s, UnitPicos ss) noexcept { m_rep.value(s, ss); }
+  constexpr void value(UnitSeconds s, UnitPicos ss) noexcept {
+    m_rep.value(s, ss);
+  }
 
-  constexpr bool isNegative() const noexcept { return m_rep.wholes() < 0 || m_rep.fractions() < 0; }
+  constexpr bool isNegative() const noexcept {
+    return m_rep.wholes() < 0 || m_rep.fractions() < 0;
+  }
 
   constexpr void category(Category cat) {
     switch (cat) {
-    case Category::Num:
-      value(0, 0);
-      break;
-    case Category::NaN:
-      value(+1, -1);
-      break;
-    case Category::InfN:
-      seconds(InfN);
-      break;
-    case Category::InfP:
-      seconds(InfP);
-      break;
+    case Category::Num: value(0, 0); break;
+    case Category::NaN: value(+1, -1); break;
+    case Category::InfN: seconds(InfN); break;
+    case Category::InfP: seconds(InfP); break;
     }
   }
 
@@ -129,7 +125,8 @@ struct RepAdapter : public SecondsTraits<> {
 };
 
 using DefaultAdapter = RepAdapter<DefaultBaseRep>;
-}
+} // namespace chronos
 
 template<typename Rep>
-class std::numeric_limits<chronos::RepAdapter<Rep>> : public std::numeric_limits<Rep> {};
+class std::numeric_limits<chronos::RepAdapter<Rep>>
+    : public std::numeric_limits<Rep> {};
