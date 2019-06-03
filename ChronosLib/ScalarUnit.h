@@ -28,7 +28,7 @@ public:
   // Public types for ScalarUnit, used for all representations.
   using Seconds = UnitSeconds;
   using Picos = UnitPicos;
-  using Both = UnitValue;
+  using Value = UnitValue;
 
 private:
   // Fields.
@@ -43,6 +43,14 @@ public:
   constexpr explicit ScalarUnit(T s, UnitPicos ss = 0) noexcept
       : m_adapter(UnitSeconds(s), ss) {}
 
+  // Construct by seconds, then numerator and denominator of picoseconds.
+  // Does not detect overflow/underflow.
+  template<typename T,
+      typename std::enable_if_t<std::is_integral<T>::value, int> = 0>
+  constexpr explicit ScalarUnit(
+      T s, UnitPicos numerator, UnitPicos denominator) noexcept
+      : m_adapter(UnitSeconds(s), (numerator * PicosPerSecond) / denominator) {}
+
   // Warning: This is not at all performant. It's not even eval'ed as constexpr.
   template<typename T,
       typename std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
@@ -51,7 +59,6 @@ public:
   constexpr explicit ScalarUnit(Category cat) noexcept { category(cat); }
 
   constexpr ScalarUnit(const ScalarUnit&) noexcept = default;
-
   constexpr ScalarUnit(ScalarUnit&&) noexcept = default;
 
   template<typename RepU, typename AdapterU>
@@ -125,7 +132,7 @@ public:
 
   // Unary minus negates.
   // Note than NaN remains the same.
-  constexpr ScalarUnit operator-() {
+  constexpr ScalarUnit operator-() noexcept {
     // TODO: Maybe optimize to avoid scaling.
     const auto& sss = value();
     return ScalarUnit(-sss.s, -sss.ss);
@@ -147,13 +154,13 @@ public:
     // If either is special value, result is special.
     auto catL = toCategory(sssL.s), catR = toCategory(sssR.s);
     if (catL != Category::Num || catR != Category::Num)
-      return *this = addCat(catL, catR);
+      return *this = addCategories(catL, catR);
     bool negL = m_adapter.isNegative(), negR = rhs.m_adapter.isNegative();
     sssL.s += sssR.s;
     sssL.ss += sssR.ss;
     m_adapter.value(sssL);
     // Same sign means addition, which overflows when sign flips.
-    if (negL == negR && m_adapter.isNegative() != negL)
+    if ((negL == negR) && (m_adapter.isNegative() != negL))
       *this = negL ? Category::InfN : Category::InfP;
     return *this;
   }
@@ -164,17 +171,25 @@ public:
     return (*this) += -ScalarUnit<>(rhs);
   }
 
-#if 0
-    // Inc pico or sec?
-    ScalarUnit operator++(int);
-    ScalarUnit operator--(int);
-    ScalarUnit& operator++();
-    ScalarUnit& operator--();
+  constexpr ScalarUnit& operator++() noexcept {
+    return (*this) += ScalarUnit(1);
+  }
 
-    ScalarUnit& operator*=(ScalarUnit other);
-    ScalarUnit& operator/=(ScalarUnit other);
-    ScalarUnit& operator%=(ScalarUnit other);
-#endif
+  constexpr ScalarUnit operator++(int) noexcept {
+    ScalarUnit s(*this);
+    operator++();
+    return s;
+  }
+
+  constexpr ScalarUnit& operator--() noexcept {
+    return (*this) += ScalarUnit(-1);
+  }
+
+  constexpr ScalarUnit operator--(int) noexcept {
+    ScalarUnit s(*this);
+    operator--();
+    return s;
+  }
 
   // I/O.
   std::ostream& dump(std::ostream& os) const noexcept {

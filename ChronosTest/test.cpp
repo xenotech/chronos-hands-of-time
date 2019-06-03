@@ -2,6 +2,8 @@
 #include <iostream>
 #include "../ChronosLib/CanonRep.h"
 #include "../ChronosLib/ScalarUnit.h"
+#include "../ChronosLib/Interval.h"
+#include "../ChronosLib/Moment.h"
 
 using namespace std;
 using namespace chronos;
@@ -24,7 +26,7 @@ public:
 };
 
 #define DUMPSTER(U) Dumpster(__LINE__, U, #U)
-#if 1
+#if 0
 #define DUMP(U) cout << DUMPSTER(U) << endl;
 #else
 #define DUMP(U)
@@ -35,10 +37,18 @@ void testCtors() {
   Unit nan(Category::NaN);
   DUMP(nan);
   EXPECT_EQ(nan.category(), Category::NaN);
+  EXPECT_TRUE(nan.isNaN());
+  EXPECT_FALSE(nan.isNumber());
+  EXPECT_TRUE(nan.isSpecial());
+  EXPECT_FALSE(nan.isNegativeInfinity());
+  EXPECT_FALSE(nan.isInfinite());
+  EXPECT_FALSE(nan.isPositiveInfinity());
   Unit zero;
   DUMP(zero);
   EXPECT_EQ(zero.category(), Category::Num);
   EXPECT_EQ(zero.seconds(), 0);
+  EXPECT_EQ(zero.subseconds(), 0);
+  EXPECT_EQ(zero.value(), UnitValue());
   Unit one(1);
   DUMP(one);
   EXPECT_EQ(one.category(), Category::Num);
@@ -89,22 +99,15 @@ TEST(CtorDefault, ChronosTest) {
 
   u = Category::InfN;
 
-  cout << "1!!!" << std::numeric_limits<UnitSeconds>::digits << endl;
-  cout << "2!!!" << std::numeric_limits<Base>::digits << endl;
-
   UnitSeconds a = Unit::AdapterT::maxSeconds;
   UnitSeconds b = Unit::AdapterT::minSeconds;
   UnitSeconds c = Unit::AdapterT::nanSeconds;
   UnitSeconds d = SecondsTraits<UnitSeconds>::NaN;
-  cout << hex;
-  cout << "max=" << a << endl;
-  cout << "min=" << b << endl;
-  cout << "nanx1=" << c << endl;
-  cout << "nan2=" << d << endl;
-  cout << dec;
   testCtors<Unit>();
   testCtors<ScalarUnit<CanonRep<int8_t, int8_t>>>();
   testCtors<ScalarUnit<CanonRep<int16_t, int16_t>>>();
+  testCtors<Interval<>>();
+  testCtors<Moment<>>();
 }
 
 TEST(CtorFloat, ChronosTest) {
@@ -183,28 +186,28 @@ TEST(CtorDefaultCopyAB, ChronosTest) {
 
 TEST(SpecialAddition, ChronosTest) {
   using Unit = ScalarUnit<>;
-  EXPECT_EQ(Unit::addCat(Category::Num, Category::Num), Category::Num);
-  EXPECT_EQ(Unit::addCat(Category::Num, Category::NaN), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::NaN, Category::Num), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::NaN, Category::InfP), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::NaN, Category::InfN), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::InfP, Category::NaN), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::InfN, Category::NaN), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::InfP, Category::Num), Category::InfP);
-  EXPECT_EQ(Unit::addCat(Category::InfP, Category::InfP), Category::InfP);
-  EXPECT_EQ(Unit::addCat(Category::InfP, Category::InfN), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::InfN, Category::Num), Category::InfN);
-  EXPECT_EQ(Unit::addCat(Category::InfN, Category::InfN), Category::InfN);
-  EXPECT_EQ(Unit::addCat(Category::InfN, Category::InfP), Category::NaN);
-  EXPECT_EQ(Unit::addCat(Category::Num, Category::InfP), Category::InfP);
-  EXPECT_EQ(Unit::addCat(Category::Num, Category::InfN), Category::InfN);
+  EXPECT_EQ(Unit::addCategories(Category::Num, Category::Num), Category::Num);
+  EXPECT_EQ(Unit::addCategories(Category::Num, Category::NaN), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::NaN, Category::Num), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::NaN, Category::InfP), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::NaN, Category::InfN), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::InfP, Category::NaN), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::InfN, Category::NaN), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::InfP, Category::Num), Category::InfP);
+  EXPECT_EQ(Unit::addCategories(Category::InfP, Category::InfP), Category::InfP);
+  EXPECT_EQ(Unit::addCategories(Category::InfP, Category::InfN), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::InfN, Category::Num), Category::InfN);
+  EXPECT_EQ(Unit::addCategories(Category::InfN, Category::InfN), Category::InfN);
+  EXPECT_EQ(Unit::addCategories(Category::InfN, Category::InfP), Category::NaN);
+  EXPECT_EQ(Unit::addCategories(Category::Num, Category::InfP), Category::InfP);
+  EXPECT_EQ(Unit::addCategories(Category::Num, Category::InfN), Category::InfN);
 }
 
 constexpr UnitPicos HalfPico = PicosPerSecond / 2;
 
 
-TEST(ScalarCompare, ChronosTest) {
-  using Unit = ScalarUnit<>;
+template <typename Unit>
+void testCompare() {
   EXPECT_NE(Unit(Category::NaN), Unit(Category::NaN));
   EXPECT_EQ(Unit(Category::InfP), Unit(Category::InfP));
   EXPECT_EQ(Unit(Category::InfN), Unit(Category::InfN));
@@ -219,12 +222,18 @@ TEST(ScalarCompare, ChronosTest) {
   EXPECT_EQ(Unit(-1, 1), Unit(-1, -1));
   EXPECT_TRUE(Unit(1, -1).isNaN());
   EXPECT_EQ(Unit(0, PicosPerSecond), Unit(1));
+  EXPECT_EQ(Unit(0, HalfPico), Unit(0, 1, 2));
 }
 
-TEST(ScalarAdd, ChronosTest) {
-  using Unit = ScalarUnit<>;
+TEST(ScalarCompare, ChronosTest) {
+  testCompare<ScalarUnit<>>();
+  testCompare<Interval<>>();
+  testCompare<Moment<>>();
+}
+
+template <typename Unit>
+void testAdd() {
   Unit a, b, c, d;
-  cout << "!!!!" << endl;
 
   // NaN plus.
   a = Unit(Category::NaN);
@@ -342,8 +351,8 @@ TEST(ScalarAdd, ChronosTest) {
   d = c + Unit(0, -2);
   EXPECT_EQ(a, d);
   DUMP(a); DUMP(b); DUMP(c); DUMP(d);
-  a = Unit(1, PicosPerSecond / 2);
-  b = Unit(1, PicosPerSecond / 2);
+  a = Unit(1, 1, 2);
+  b = Unit(1, 1, 2);
   c = a + b;
   EXPECT_EQ(c, Unit(3));
   DUMP(a); DUMP(b); DUMP(c);
@@ -357,8 +366,8 @@ TEST(ScalarAdd, ChronosTest) {
   c = a + b;
   EXPECT_EQ(c, Unit(-3, PicosPerSecond - 2));
   DUMP(a); DUMP(b); DUMP(c);
-  a = Unit(1, PicosPerSecond / 4 * 3);
-  b = Unit(1, PicosPerSecond / 4);
+  a = Unit(1, 3, 4);
+  b = Unit(1, 1, 4);
   c = a + b;
   EXPECT_EQ(c, Unit(3));
   DUMP(a); DUMP(b); DUMP(c);
@@ -377,6 +386,68 @@ TEST(ScalarAdd, ChronosTest) {
   c = a + b;
   EXPECT_EQ(c, Unit(0, -PicosPerSecond / 2));
   DUMP(a); DUMP(b); DUMP(c);
+
+  // Test pre/post increment/decrement.
+  Unit s(5);
+  const Unit t;
+  auto ss = --s;
+  EXPECT_EQ(s.seconds(), 4);
+  EXPECT_EQ(ss.seconds(), 4);
+  ss = ++s;
+  EXPECT_EQ(s.seconds(), 5);
+  EXPECT_EQ(ss.seconds(), 5);
+  ss = s--;
+  EXPECT_EQ(s.seconds(), 4);
+  EXPECT_EQ(ss.seconds(), 5);
+  ss = s++;
+  EXPECT_EQ(s.seconds(), 5);
+  EXPECT_EQ(ss.seconds(), 4);
+
+  // Test return types.
+  EXPECT_EQ(type_name<decltype(++s)>(), type_name<decltype(s)&>());
+  EXPECT_EQ(type_name<decltype(s++)>(), type_name<decltype(s)>());
+  EXPECT_EQ(type_name<decltype(--s)>(), type_name<decltype(s)&>());
+  EXPECT_EQ(type_name<decltype(s--)>(), type_name<decltype(s)>());
+  EXPECT_EQ(type_name<decltype(-s)>(), type_name<decltype(s)>());
+  EXPECT_EQ(type_name<decltype(s += s)>(), type_name<decltype(s)&>());
+  EXPECT_EQ(type_name<decltype(s -= s)>(), type_name<decltype(s)&>());
+  EXPECT_EQ(type_name<decltype(s = s)>(), type_name<decltype(s)&>());
+  EXPECT_EQ(type_name<decltype(s + s)>(), type_name<decltype(t)>());
+  EXPECT_EQ(type_name<decltype(s - s)>(), type_name<decltype(t)>());
+
+  // Test swap.
+  a = Unit(1);
+  b = Unit(2);
+  EXPECT_EQ(a.seconds(), 1);
+  EXPECT_EQ(b.seconds(), 2);
+  swap(a, b);
+  EXPECT_EQ(a.seconds(), 2);
+  EXPECT_EQ(b.seconds(), 1);
+}
+
+TEST(ScalarAdd, ChronosTest) {
+  testAdd<ScalarUnit<>>();
+  testAdd<Interval<>>();
+  testAdd<Moment<>>();
+
+
+
+  ScalarUnit<> s(1);
+  Interval<> i(2);
+  Moment<> m(4);
+  i = s;
+
+  //s = ScalarUnit<>(3);
+  //i = s;
+  //m = s;
+  //m = i;
+  // Bad, very bad. Can't allow M=I.
+  // Can't allow M + M, only M + I.
+  // Must make sure M - M yields I
+  // Must allow M + I, M - I, yielding M
+  // Must not allow I - M, only I + M, M + I. M - I.
+  // Must not allow I = M or M = I, just M = S and I = S.
+  // Do we have to use private inheritance or has-a?
 }
 
 #if 0

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <limits>
 #include <utility>
+#include <compare>
 #include "util.h"
 
 namespace chronos {
@@ -27,6 +28,13 @@ using UnitPicos = int64_t;
 struct UnitValue {
   UnitSeconds s;
   UnitPicos ss;
+
+  // For testing.
+  constexpr ::std::strong_ordering operator<=>(const UnitValue& rhs) const
+      noexcept {
+    if (auto cmp = s <=> rhs.s; cmp != 0) return cmp;
+    return ss <=> rhs.ss;
+  }
 };
 
 // These constants are for an idealized calendar, with no time zones or leap
@@ -72,7 +80,7 @@ struct SecondsTraits {
   static constexpr const Units NaN = std::numeric_limits<Units>::min();
 
   // Resolve special categories under addition.
-  static constexpr Category addCat(Category catL, Category catR) {
+  static constexpr Category addCategories(Category catL, Category catR) {
     if (catL == Category::Num && catR == Category::Num) return Category::Num;
     if (catL == Category::NaN || catR == Category::NaN) return Category::NaN;
     if (catL == Category::InfP || catL == Category::InfN) {
