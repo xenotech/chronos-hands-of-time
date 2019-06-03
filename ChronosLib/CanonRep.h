@@ -97,7 +97,6 @@ public:
   // Ctors.
   constexpr CanonRep() noexcept : m_wholes(0), m_fractions(0) {}
   constexpr CanonRep(const CanonRep& unit) noexcept = default;
-  constexpr CanonRep(CanonRep&& unit) noexcept = default;
   constexpr explicit CanonRep(UnitSeconds s, UnitPicos ss = 0) noexcept
       : CanonRep(create(s, ss)) {}
   constexpr explicit CanonRep(const UnitValue& sss) noexcept

@@ -32,6 +32,44 @@ public:
 #define DUMP(U)
 #endif
 
+template<class T> struct sink { typedef void type; };
+template<class T> using sink_t=typename sink<T>::type;
+
+template<typename T, typename U, typename = void > struct copy_allowed :std::false_type {};
+template<typename T, typename U> struct copy_allowed<T, U,
+  sink_t<decltype(T(U(0)))>> : std::true_type {};
+//sink_t<decltype(T(std::declval<U>())) >> : std::true_type{};
+//!!! TODO: Change interval to duration?
+
+TEST(NoCompile, ChronosTest) {
+  static_assert(copy_allowed<int, int>::value);
+  static_assert(!copy_allowed<int, std::string > ::value);
+  static_assert(copy_allowed<ScalarUnit<>, ScalarUnit<>>::value);
+  static_assert(copy_allowed<Interval<>, Interval<>>::value);
+  static_assert(copy_allowed<Moment<>, Moment<>>::value);
+
+  static_assert(!copy_allowed<Interval<>, ScalarUnit<>>::value);
+  static_assert(!copy_allowed<Interval<>, ScalarUnit<>>::value);
+
+  static_assert(!copy_allowed<ScalarUnit<>, Interval<>>::value);
+  static_assert(!copy_allowed<ScalarUnit<>, Moment<>>::value); //<---
+
+  static_assert(!copy_allowed<Moment<>, Interval<>>::value);
+  static_assert(!copy_allowed<Interval<>, Moment<>>::value);
+  ScalarUnit<> s1;
+  Interval<> i1;
+  Moment<> m1;
+
+  // TODO: Write tests to check whether assignment and comparison work.
+  // TODO: Fix it so that you can't sub M from M to get M, and so on.
+
+  //ScalarUnit<> a1(Moment<>(0)); // <-- why?
+  // Moment<> a2(ScalarUnit<>(0));
+  //ScalarUnit<> a3(Interval<>(0));
+  //Interval<> a4(ScalarUnit<>(0));
+}
+
+
 template<typename Unit>
 void testCtors() {
   Unit nan(Category::NaN);
@@ -119,10 +157,10 @@ TEST(CtorFloat, ChronosTest) {
   a = Unit(-1);
   b = Unit(-1.0);
   EXPECT_EQ(a, b); DUMP(a); DUMP(b);
-  a = Unit(1, PicosPerSecond / 2);
+  a = Unit(1, 1, 2);
   b = Unit(1.5);
   EXPECT_EQ(a, b); DUMP(a); DUMP(b);
-  a = Unit(-1, PicosPerSecond / 2);
+  a = Unit(-1, 1, 2);
   b = Unit(-1.5);
   EXPECT_EQ(a, b); DUMP(a); DUMP(b);
   a = Unit(1, 250000000000);
@@ -203,9 +241,6 @@ TEST(SpecialAddition, ChronosTest) {
   EXPECT_EQ(Unit::addCategories(Category::Num, Category::InfN), Category::InfN);
 }
 
-constexpr UnitPicos HalfPico = PicosPerSecond / 2;
-
-
 template <typename Unit>
 void testCompare() {
   EXPECT_NE(Unit(Category::NaN), Unit(Category::NaN));
@@ -222,7 +257,9 @@ void testCompare() {
   EXPECT_EQ(Unit(-1, 1), Unit(-1, -1));
   EXPECT_TRUE(Unit(1, -1).isNaN());
   EXPECT_EQ(Unit(0, PicosPerSecond), Unit(1));
-  EXPECT_EQ(Unit(0, HalfPico), Unit(0, 1, 2));
+  EXPECT_EQ(Unit(0, PicosPerSecond / 2), Unit(0, 1, 2));
+  EXPECT_EQ(Unit(0, -1, 2), Unit(0, 1, -2));
+  EXPECT_EQ(Unit(0, 1, 2), Unit(0, -1, -2));
 }
 
 TEST(ScalarCompare, ChronosTest) {
@@ -371,20 +408,20 @@ void testAdd() {
   c = a + b;
   EXPECT_EQ(c, Unit(3));
   DUMP(a); DUMP(b); DUMP(c);
-  a = Unit(-1, PicosPerSecond / 4 * 3);
-  b = Unit(-1, PicosPerSecond / 4);
+  a = Unit(-1, 3, 4);
+  b = Unit(-1, 1, 4);
   c = a + b;
   EXPECT_EQ(c, Unit(-3));
   DUMP(a); DUMP(b); DUMP(c);
-  a = Unit(1, PicosPerSecond / 4 * 3);
-  b = Unit(-1, PicosPerSecond / 4);
+  a = Unit(1, 3, 4);
+  b = Unit(-1, 1, 4);
   c = a + b;
-  EXPECT_EQ(c, Unit(0, PicosPerSecond / 2));
+  EXPECT_EQ(c, Unit(0, 1, 2));
   DUMP(a); DUMP(b); DUMP(c);
-  a = Unit(-1, PicosPerSecond / 4 * 3);
-  b = Unit(1, PicosPerSecond / 4);
+  a = Unit(-1, 3, 4);
+  b = Unit(1, 1, 4);
   c = a + b;
-  EXPECT_EQ(c, Unit(0, -PicosPerSecond / 2));
+  EXPECT_EQ(c, Unit(0, -1, 2));
   DUMP(a); DUMP(b); DUMP(c);
 
   // Test pre/post increment/decrement.
@@ -435,7 +472,7 @@ TEST(ScalarAdd, ChronosTest) {
   ScalarUnit<> s(1);
   Interval<> i(2);
   Moment<> m(4);
-  i = s;
+  //i = s;
 
   //s = ScalarUnit<>(3);
   //i = s;

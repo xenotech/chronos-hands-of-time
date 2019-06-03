@@ -83,10 +83,8 @@ struct RepAdapter : public SecondsTraits<> {
   constexpr RepAdapter() noexcept : m_rep() {}
   explicit constexpr RepAdapter(const UnitValue& sss) noexcept : m_rep(sss) {}
   explicit constexpr RepAdapter(const Rep& rep) noexcept : m_rep(rep) {}
-  explicit constexpr RepAdapter(Rep&& rep) noexcept : m_rep(std::move(rep)) {}
   constexpr RepAdapter(UnitSeconds s, UnitPicos ss) noexcept : m_rep(s, ss) {}
   constexpr RepAdapter(const RepAdapter&) noexcept = default;
-  constexpr RepAdapter(RepAdapter&&) noexcept = default;
 
   constexpr RepAdapter& operator=(const RepAdapter&) = default;
 

@@ -39,14 +39,16 @@ public:
   constexpr ScalarUnit() noexcept : m_adapter() {}
 
   template<typename T,
-      typename std::enable_if_t<std::is_integral<T>::value, int> = 0>
+      typename std::enable_if_t<
+          std::is_integral<T>::value && !std::is_class<T>::value, int> = 0>
   constexpr explicit ScalarUnit(T s, UnitPicos ss = 0) noexcept
       : m_adapter(UnitSeconds(s), ss) {}
 
   // Construct by seconds, then numerator and denominator of picoseconds.
   // Does not detect overflow/underflow.
   template<typename T,
-      typename std::enable_if_t<std::is_integral<T>::value, int> = 0>
+      typename std::enable_if_t<
+          std::is_integral<T>::value && !std::is_class<T>::value, int> = 0>
   constexpr explicit ScalarUnit(
       T s, UnitPicos numerator, UnitPicos denominator) noexcept
       : m_adapter(UnitSeconds(s), (numerator * PicosPerSecond) / denominator) {}
@@ -56,23 +58,27 @@ public:
       typename std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
   constexpr explicit ScalarUnit(T sss) noexcept : m_adapter(fromFloat(sss)) {}
 
+  constexpr explicit ScalarUnit(UnitValue sss) noexcept : m_adapter(sss) {}
+
   constexpr explicit ScalarUnit(Category cat) noexcept { category(cat); }
 
   constexpr ScalarUnit(const ScalarUnit&) noexcept = default;
-  constexpr ScalarUnit(ScalarUnit&&) noexcept = default;
 
-  template<typename RepU, typename AdapterU>
+  template<typename RepU, typename AdapterU,
+      typename std::enable_if_t<
+          !std::is_same_v<ScalarUnitT, ScalarUnit<RepU, AdapterU>>, int> = 0>
   constexpr explicit ScalarUnit(const ScalarUnit<RepU, AdapterU>& rhs)
       : m_adapter(rhs.value()) {}
 
   constexpr ScalarUnit& operator=(const ScalarUnit& rhs) = default;
-  constexpr ScalarUnit& operator=(ScalarUnit&&) noexcept = default;
   constexpr ScalarUnit& operator=(Category cat) {
     category(cat);
     return *this;
   }
 
-  template<typename RepU, typename AdapterU>
+  template<typename RepU, typename AdapterU,
+      typename std::enable_if_t<
+          !std::is_same_v<ScalarUnitT, ScalarUnit<RepU, AdapterU>>, int> = 0>
   constexpr ScalarUnit& operator=(
       const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
     m_adapter.value(rhs.value());
