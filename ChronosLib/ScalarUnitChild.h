@@ -42,10 +42,10 @@ public:
   using Scalar::isNegativeInfinity;
   using Scalar::dump;
 
-  template<typename R>
-  constexpr Child& operator=(const R& rhs) {
+  template<typename ScalarU>
+  constexpr Child& operator=(const Other<ScalarU>& rhs) {
     Parent::operator=(rhs);
-    return *this;
+    return static_cast<Child&>(*this);
   }
 
   template<typename ScalarU>

@@ -86,13 +86,7 @@ struct RepAdapter : public SecondsTraits<> {
   constexpr RepAdapter(UnitSeconds s, UnitPicos ss) noexcept : m_rep(s, ss) {}
   constexpr RepAdapter(const RepAdapter&) noexcept = default;
 
-  constexpr RepAdapter& operator=(const RepAdapter&) = default;
-
-  // These are internal values that are generally not useful.
-  // TODO: See if these can be safely removed.
-  static constexpr UnitSeconds maxSeconds = typename Rep::Max;
-  static constexpr UnitSeconds minSeconds = typename Rep::Min;
-  static constexpr UnitSeconds nanSeconds = typename Rep::NaN;
+  constexpr RepAdapter& operator=(const RepAdapter&) noexcept = default;
 
   constexpr UnitSeconds seconds() const noexcept { return m_rep.seconds(); }
   constexpr void seconds(UnitSeconds s) noexcept { m_rep.seconds(s); }
@@ -110,7 +104,7 @@ struct RepAdapter : public SecondsTraits<> {
     return m_rep.wholes() < 0 || m_rep.fractions() < 0;
   }
 
-  constexpr void category(Category cat) {
+  constexpr void category(Category cat) noexcept {
     switch (cat) {
     case Category::Num: value(0, 0); break;
     case Category::NaN: value(+1, -1); break;
@@ -119,7 +113,7 @@ struct RepAdapter : public SecondsTraits<> {
     }
   }
 
-  std::ostream& dump(std::ostream& os) const noexcept { return os << m_rep; }
+  std::ostream& dump(std::ostream& os) const { return os << m_rep; }
 };
 
 using DefaultAdapter = RepAdapter<DefaultBaseRep>;

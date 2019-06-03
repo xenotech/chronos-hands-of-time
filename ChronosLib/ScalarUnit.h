@@ -19,12 +19,6 @@ public:
   using RepT = Rep;
   using AdapterT = Adapter;
 
-  // Types from adapter. Generally not useful.
-  // TODO: See if these can be safely removed.
-  using WholesT = typename AdapterT::WholesT;
-  using FractionsT = typename AdapterT::FractionsT;
-  using WholesTraitsT = SecondsTraits<WholesT>;
-
   // Public types for ScalarUnit, used for all representations.
   using Seconds = UnitSeconds;
   using Picos = UnitPicos;
@@ -44,8 +38,8 @@ public:
   constexpr explicit ScalarUnit(T s, UnitPicos ss = 0) noexcept
       : m_adapter(UnitSeconds(s), ss) {}
 
-  // Construct by seconds, then numerator and denominator of picoseconds.
-  // Does not detect overflow/underflow.
+  // Construct by seconds, then numerator and denominator of picoseconds. Does
+  // not detect overflow/underflow.
   template<typename T,
       typename std::enable_if_t<
           std::is_integral<T>::value && !std::is_class<T>::value, int> = 0>
@@ -53,7 +47,8 @@ public:
       T s, UnitPicos numerator, UnitPicos denominator) noexcept
       : m_adapter(UnitSeconds(s), (numerator * PicosPerSecond) / denominator) {}
 
-  // Warning: This is not at all performant. It's not even eval'ed as constexpr.
+  // Warning: This is not at all performant. It's not even eval'ed as
+  // constexpr.
   template<typename T,
       typename std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
   constexpr explicit ScalarUnit(T sss) noexcept : m_adapter(fromFloat(sss)) {}
@@ -67,11 +62,11 @@ public:
   template<typename RepU, typename AdapterU,
       typename std::enable_if_t<
           !std::is_same_v<ScalarUnitT, ScalarUnit<RepU, AdapterU>>, int> = 0>
-  constexpr explicit ScalarUnit(const ScalarUnit<RepU, AdapterU>& rhs)
+  constexpr explicit ScalarUnit(const ScalarUnit<RepU, AdapterU>& rhs) noexcept
       : m_adapter(rhs.value()) {}
 
-  constexpr ScalarUnit& operator=(const ScalarUnit& rhs) = default;
-  constexpr ScalarUnit& operator=(Category cat) {
+  constexpr ScalarUnit& operator=(const ScalarUnit& rhs) noexcept = default;
+  constexpr ScalarUnit& operator=(Category cat) noexcept {
     category(cat);
     return *this;
   }
@@ -87,7 +82,7 @@ public:
 
   // Categories.
   constexpr Category category() const noexcept { return toCategory(seconds()); }
-  constexpr void category(Category cat) { m_adapter.category(cat); }
+  constexpr void category(Category cat) noexcept { m_adapter.category(cat); }
 
   // Returns whether it has a numerical value, as opposed to a special one.
   constexpr bool isNumber() const noexcept {
@@ -164,8 +159,16 @@ public:
     bool negL = m_adapter.isNegative(), negR = rhs.m_adapter.isNegative();
     sssL.s += sssR.s;
     sssL.ss += sssR.ss;
+    // Carry when signs are mismatched.
+    if (sssL.s < 0 && sssL.ss > 0) {
+      sssL.ss -= PicosPerSecond;
+      sssL.s++;
+    } else if (sssL.s > 0 && sssL.ss < 0) {
+      sssL.ss += PicosPerSecond;
+      sssL.s--;
+    }
     m_adapter.value(sssL);
-    // Same sign means addition, which overflows when sign flips.
+    // If we added and the sign flipped, overflow.
     if ((negL == negR) && (m_adapter.isNegative() != negL))
       *this = negL ? Category::InfN : Category::InfP;
     return *this;
@@ -198,7 +201,7 @@ public:
   }
 
   // I/O.
-  std::ostream& dump(std::ostream& os) const noexcept {
+  std::ostream& dump(std::ostream& os) const {
     Category cat = category();
     if (cat == Category::Num) {
       auto sss = value();

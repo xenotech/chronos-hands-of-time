@@ -2,7 +2,6 @@
 #include <iostream>
 #include "../ChronosLib/CanonRep.h"
 #include "../ChronosLib/ScalarUnit.h"
-#include "../ChronosLib/Duration.h"
 #include "../ChronosLib/Moment.h"
 
 using namespace std;
@@ -38,12 +37,16 @@ template<class T> using sink_t=typename sink<T>::type;
 template<typename T, typename U, typename = void > struct copy_allowed :std::false_type {};
 template<typename T, typename U> struct copy_allowed<T, U,
   sink_t<decltype(T(U(0)))>> : std::true_type {};
-//sink_t<decltype(T(std::declval<U>())) >> : std::true_type{};
-//!!! TODO: Change interval to duration?
+
+// TODO: This does not work.
+template<typename T, typename U, typename = void > struct assign_allowed :std::false_type {};
+template<typename T, typename U> struct assign_allowed<T, U,
+  sink_t<decltype(std::declval<T>().operator=(std::declval<U>()))>> : std::true_type {};
 
 TEST(NoCompile, ChronosTest) {
   static_assert(copy_allowed<int, int>::value);
   static_assert(!copy_allowed<int, std::string > ::value);
+
   static_assert(copy_allowed<ScalarUnit<>, ScalarUnit<>>::value);
   static_assert(copy_allowed<Duration<>, Duration<>>::value);
   static_assert(copy_allowed<Moment<>, Moment<>>::value);
@@ -51,24 +54,61 @@ TEST(NoCompile, ChronosTest) {
   static_assert(!copy_allowed<Duration<>, ScalarUnit<>>::value);
   static_assert(!copy_allowed<Duration<>, ScalarUnit<>>::value);
 
+  // std::is_constructible yields the wrong answer for these two.
   static_assert(!copy_allowed<ScalarUnit<>, Duration<>>::value);
   static_assert(!copy_allowed<ScalarUnit<>, Moment<>>::value);
 
   static_assert(!copy_allowed<Moment<>, Duration<>>::value);
   static_assert(!copy_allowed<Duration<>, Moment<>>::value);
-  ScalarUnit<> s1;
-  Duration<> i1;
-  Moment<> m1;
 
-  // TODO: Write tests to check whether assignment and comparison work.
-  // TODO: Fix it so that you can't sub M from M to get M, and so on.
+  // TODO: Detect that the commented-out ones fail to compile.
+  ScalarUnit<> s1(1), s2(2);
+  Duration<> d1(3), d2(4);
+  Moment<> m1(5), m2(6), m3(7);
+  s1 = s1;
+  d1 = d1;
+  m1 = m1;
+  //* s1 = d1;
+  //* d1 = s1;
+  //* s1 = m1;
+  //* m1 = s1;
+  //* m1 = d1;
+  //* d1 = m1;
 
-  //ScalarUnit<> a1(Moment<>(0)); // <-- why?
-  // Moment<> a2(ScalarUnit<>(0));
-  //ScalarUnit<> a3(Duration<>(0));
-  //Duration<> a4(ScalarUnit<>(0));
+  d1 += d2;
+  d1 -= d2;
+  d1 = d1 + d2;
+  d1 = d1 - d2;
+  //* d1 += m1;
+  //* d1 -= m1;
+  //* d1 = d1 - m1;
+  //* d1 = d1 + m1;
+  m1 = d1 + m1;
+  m1 = m1 + d1;
+  //* m1 = d1 - m1;
+  m1 = m1 - d1;
+
+  //* m1 = -m2;
+  //* EXPECT_EQ(m1.seconds(), -m2.seconds());
+
+  //* m3-=m2;
+  m3 -= d1;
+  m3 += d1;
+  //* m1 = m2 + m3;
+  m1 = m2 + d1;
+  m2 = d1 + m2;
+  d1 = m2 - m1;
+  d1 = m1 - m2;
+
+  // Test comparisons.
+  bool f;
+  f = (s1 < s2);
+  f = (m1 < m2);
+  f = (d1 < d2);
+  //* f = (s1 < m1);
+  //* f = (s1 < d1);
+  //* f = (m1 < d1);
 }
-
 
 template<typename Unit>
 void testCtors() {
@@ -137,10 +177,6 @@ TEST(CtorDefault, ChronosTest) {
 
   u = Category::InfN;
 
-  UnitSeconds a = Unit::AdapterT::maxSeconds;
-  UnitSeconds b = Unit::AdapterT::minSeconds;
-  UnitSeconds c = Unit::AdapterT::nanSeconds;
-  UnitSeconds d = SecondsTraits<UnitSeconds>::NaN;
   testCtors<Unit>();
   testCtors<ScalarUnit<CanonRep<int8_t, int8_t>>>();
   testCtors<ScalarUnit<CanonRep<int16_t, int16_t>>>();
@@ -424,6 +460,15 @@ void testAdd() {
   EXPECT_EQ(c, Unit(0, -1, 2));
   DUMP(a); DUMP(b); DUMP(c);
 
+  a = Unit(1) - Unit(0, 1);
+  EXPECT_EQ(a, Unit(0, PicosPerSecond - 1));
+  a = Unit(-1) - Unit(0, -1);
+  EXPECT_EQ(a, Unit(0, -(PicosPerSecond - 1)));
+  a = Unit(0) - Unit(0, 1);
+  EXPECT_EQ(a, Unit(0, -1));
+  a = Unit(0) - Unit(0, -1);
+  EXPECT_EQ(a, Unit(0, 1));
+
   // Test pre/post increment/decrement.
   Unit s(5);
   const Unit t;
@@ -462,34 +507,70 @@ void testAdd() {
   EXPECT_EQ(b.seconds(), 1);
 }
 
-TEST(ScalarAdd, ChronosTest) {
+TEST(ScalarMath, ChronosTest) {
   testAdd<ScalarUnit<>>();
   testAdd<Duration<>>();
-  testAdd<Moment<>>();
 
+  // Does not support conventional binary ops.
+  //* testAdd<Moment<>>();
 
+  Duration<> d1(1), d2(2), d3(3);
+  Moment<> m1(4), m2(5), m3(6);
+  d1 += d2;
+  EXPECT_EQ(d1.seconds(), 3);
+  d1 -= d2;
+  EXPECT_EQ(d1.seconds(), 1);
+  d1 = d1 + d2;
+  EXPECT_EQ(d1.seconds(), 3);
+  d1 = d1 - d2;
+  EXPECT_EQ(d1.seconds(), 1);
+  m1 = d1 + m1;
+  EXPECT_EQ(m1.seconds(), 5);
+  m1 = m1 + d1;
+  EXPECT_EQ(m1.seconds(), 6);
+  m1 = m1 - d1;
+  EXPECT_EQ(m1.seconds(), 5);
+  m3 -= d1;
+  EXPECT_EQ(m3.seconds(), 5);
+  m3 += d1;
+  EXPECT_EQ(m3.seconds(), 6);
+  m1 = m2 + d1;
+  EXPECT_EQ(m1.seconds(), 6);
+  m2 = d1 + m3;
+  EXPECT_EQ(m2.seconds(), 7);
+  d1 = m2 - m1;
+  EXPECT_EQ(d1.seconds(), 1);
+  d1 = m1 - m2;
+  EXPECT_EQ(d1.seconds(), -1);
 
-  ScalarUnit<> s(1);
-  Duration<> i(2);
-  Moment<> m(4);
-  //i = s;
+  m1 = --m2;
+  EXPECT_EQ(m1.seconds(), 6);
+  EXPECT_EQ(m2.seconds(), 6);
+  m1 = m2--;
+  EXPECT_EQ(m1.seconds(), 6);
+  EXPECT_EQ(m2.seconds(), 5);
+  m1 = ++m2;
+  EXPECT_EQ(m1.seconds(), 6);
+  EXPECT_EQ(m2.seconds(), 6);
+  m1 = m2++;
+  EXPECT_EQ(m1.seconds(), 6);
+  EXPECT_EQ(m2.seconds(), 7);
 
-  //s = ScalarUnit<>(3);
-  //i = s;
-  //m = s;
-  //m = i;
-  // Bad, very bad. Can't allow M=I.
-  // Can't allow M + M, only M + I.
-  // Must make sure M - M yields I
-  // Must allow M + I, M - I, yielding M
-  // Must not allow I - M, only I + M, M + I. M - I.
-  // Must not allow I = M or M = I, just M = S and I = S.
-  // Do we have to use private inheritance or has-a?
+  d1 = Duration<>(1, 1, 2);
+  d1 *= 3;
+  EXPECT_EQ(d1, Duration<>(4,1,2));
+  d1 = Duration<>(4, 1, 2);
+  d1 *= Duration<>::Max;
+  EXPECT_TRUE(d1.isPositiveInfinity());
+  d1 = Duration<>(0, 1, 2);
+  d1 *= Duration<>::Max;
+  EXPECT_TRUE(d1.isNaN());
+  d1 = Duration<>(-1, 1, 2);
+  d1 *= 3;
+  EXPECT_EQ(d1, Duration<>(-4, 1, 2));
+  d1 *= Duration<>::Max;
+  EXPECT_TRUE(d1.isNegativeInfinity());
+  d1 = Duration<>(0, -1, 2);
+  d1 *= Duration<>::Max;
+  EXPECT_TRUE(d1.isNaN());
 }
-
-#if 0
-TEST(CtorDefaultNoCompile, ChronosTest) {
-  using Unit1 = ScalarUnit<BaseUnit<uint16_t, uint16_t>>;
-  using Unit2 = ScalarUnit<BaseUnit<int16_t, int16_t>>;
-}
-#endif

@@ -103,7 +103,6 @@ public:
       : CanonRep(create(sss)) {}
 
   constexpr CanonRep& operator=(const CanonRep& unit) noexcept = default;
-  constexpr CanonRep& operator=(CanonRep&& unit) noexcept = default;
 
   enum class Raw { raw };
   constexpr CanonRep(Raw, Wholes w, Fractions f = 0) noexcept
@@ -135,7 +134,7 @@ public:
   constexpr Fractions fractions() const noexcept { return m_fractions; }
   constexpr void fractions(Fractions f) noexcept { m_fractions = f; }
 
-  std::ostream& dump(std::ostream& os) const noexcept {
+  std::ostream& dump(std::ostream& os) const {
     auto flagScope = makeStreamFlagsGuard(os, std::ios::hex);
     return os << static_cast<UnitSeconds>(wholes()) << "."
               << static_cast<UnitPicos>(fractions()) << " <" << sizeof(WholesT)
