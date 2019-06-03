@@ -5,7 +5,7 @@ namespace chronos {
 
 // Forward.
 template<typename Scalar>
-class Interval;
+class Duration;
 
 template<typename T>
 struct SpecializationTrait<Moment<T>> {

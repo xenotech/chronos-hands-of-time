@@ -7,7 +7,7 @@
 
 namespace chronos {
 // Scalar unit to hold absolute and relative scalar chronological values, which
-// are then used as base for both Interval and Moment classes.
+// are then used as base for both Moment and Duration classes.
 //
 // Templated on a base unit that defines the range, precision, and specific
 // representation. See RepAdapter and CanonRep for details.

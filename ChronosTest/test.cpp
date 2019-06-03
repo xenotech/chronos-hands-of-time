@@ -2,7 +2,7 @@
 #include <iostream>
 #include "../ChronosLib/CanonRep.h"
 #include "../ChronosLib/ScalarUnit.h"
-#include "../ChronosLib/Interval.h"
+#include "../ChronosLib/Duration.h"
 #include "../ChronosLib/Moment.h"
 
 using namespace std;
@@ -45,19 +45,19 @@ TEST(NoCompile, ChronosTest) {
   static_assert(copy_allowed<int, int>::value);
   static_assert(!copy_allowed<int, std::string > ::value);
   static_assert(copy_allowed<ScalarUnit<>, ScalarUnit<>>::value);
-  static_assert(copy_allowed<Interval<>, Interval<>>::value);
+  static_assert(copy_allowed<Duration<>, Duration<>>::value);
   static_assert(copy_allowed<Moment<>, Moment<>>::value);
 
-  static_assert(!copy_allowed<Interval<>, ScalarUnit<>>::value);
-  static_assert(!copy_allowed<Interval<>, ScalarUnit<>>::value);
+  static_assert(!copy_allowed<Duration<>, ScalarUnit<>>::value);
+  static_assert(!copy_allowed<Duration<>, ScalarUnit<>>::value);
 
-  static_assert(!copy_allowed<ScalarUnit<>, Interval<>>::value);
-  static_assert(!copy_allowed<ScalarUnit<>, Moment<>>::value); //<---
+  static_assert(!copy_allowed<ScalarUnit<>, Duration<>>::value);
+  static_assert(!copy_allowed<ScalarUnit<>, Moment<>>::value);
 
-  static_assert(!copy_allowed<Moment<>, Interval<>>::value);
-  static_assert(!copy_allowed<Interval<>, Moment<>>::value);
+  static_assert(!copy_allowed<Moment<>, Duration<>>::value);
+  static_assert(!copy_allowed<Duration<>, Moment<>>::value);
   ScalarUnit<> s1;
-  Interval<> i1;
+  Duration<> i1;
   Moment<> m1;
 
   // TODO: Write tests to check whether assignment and comparison work.
@@ -65,8 +65,8 @@ TEST(NoCompile, ChronosTest) {
 
   //ScalarUnit<> a1(Moment<>(0)); // <-- why?
   // Moment<> a2(ScalarUnit<>(0));
-  //ScalarUnit<> a3(Interval<>(0));
-  //Interval<> a4(ScalarUnit<>(0));
+  //ScalarUnit<> a3(Duration<>(0));
+  //Duration<> a4(ScalarUnit<>(0));
 }
 
 
@@ -144,7 +144,7 @@ TEST(CtorDefault, ChronosTest) {
   testCtors<Unit>();
   testCtors<ScalarUnit<CanonRep<int8_t, int8_t>>>();
   testCtors<ScalarUnit<CanonRep<int16_t, int16_t>>>();
-  testCtors<Interval<>>();
+  testCtors<Duration<>>();
   testCtors<Moment<>>();
 }
 
@@ -264,7 +264,7 @@ void testCompare() {
 
 TEST(ScalarCompare, ChronosTest) {
   testCompare<ScalarUnit<>>();
-  testCompare<Interval<>>();
+  testCompare<Duration<>>();
   testCompare<Moment<>>();
 }
 
@@ -464,13 +464,13 @@ void testAdd() {
 
 TEST(ScalarAdd, ChronosTest) {
   testAdd<ScalarUnit<>>();
-  testAdd<Interval<>>();
+  testAdd<Duration<>>();
   testAdd<Moment<>>();
 
 
 
   ScalarUnit<> s(1);
-  Interval<> i(2);
+  Duration<> i(2);
   Moment<> m(4);
   //i = s;
 

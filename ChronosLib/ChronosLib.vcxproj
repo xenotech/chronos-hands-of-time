@@ -163,8 +163,8 @@
   <ItemGroup>
     <ClInclude Include="CanonRep.h" />
     <ClInclude Include="Core.h" />
+    <ClInclude Include="Duration.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="Interval.h" />
     <ClInclude Include="Moment.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="RepAdapter.h" />
