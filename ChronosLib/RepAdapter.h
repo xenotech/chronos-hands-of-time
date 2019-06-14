@@ -3,7 +3,6 @@
 #include "StreamGuard.h"
 
 namespace chronos {
-
 // This is the adapter for base represenations used to store absolute and
 // relative scalar chronological values.
 //
@@ -113,12 +112,30 @@ struct RepAdapter : public SecondsTraits<> {
     }
   }
 
-  std::ostream& dump(std::ostream& os) const { return os << m_rep; }
+  template<class CharT, class Traits>
+  auto dump(std::basic_ostream<CharT, Traits>& os) const -> decltype(os) {
+    return os << m_rep;
+  }
 };
 
-using DefaultAdapter = RepAdapter<DefaultBaseRep>;
+using DefaultAdapter = RepAdapter<details::DefaultBaseRep>;
 } // namespace chronos
 
 template<typename Rep>
 class std::numeric_limits<chronos::RepAdapter<Rep>>
     : public std::numeric_limits<Rep> {};
+
+// Support structured binding by providing universal get.
+namespace std {
+template<std::size_t N, typename Unit>
+constexpr auto get(const Unit& su,
+    std::enable_if_t<chronos::is_scalar_unit_v<Unit>>* = nullptr) {
+  if constexpr (N == 0)
+    return su.seconds();
+  else if constexpr (N == 1)
+    return su.subseconds();
+  else if constexpr (N == -1)
+    return UnitValue(su.seconds(), su.subseconds());
+};
+
+} // namespace std

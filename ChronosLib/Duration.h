@@ -1,8 +1,8 @@
 #pragma once
 #include "ScalarUnitChild.h"
+#include <intrin.h>
 
 namespace chronos {
-
 // Forward.
 template<typename Scalar>
 class Moment;
@@ -10,43 +10,25 @@ class Moment;
 template<typename Scalar>
 class Duration;
 
+namespace details {
 template<typename T>
-struct SpecializationTrait<Duration<T>> {
+struct ScalarChildTraits<Duration<T>> {
   template<typename U>
   using Other = Duration<U>;
-  using Specialization = T;
+  using Scalar = T;
 };
 
+} // namespace details
+
 // Duration between two moments in time.
-template<typename Scalar = DefaultScalarUnit>
-class Duration : public ScalarUnitChild<Duration<Scalar>> {
+template<typename Scalar = details::DefaultScalarUnit>
+class Duration : public details::ScalarUnitChild<Duration<Scalar>> {
 public:
-  using Parent = ScalarUnitChild<Duration<Scalar>>;
+  using Parent = details::ScalarUnitChild<Duration<Scalar>>;
 
   using Parent::Parent;
   using Parent::operator=;
   using Parent::operator<=>;
-
-  template<typename U,
-      typename std::enable_if_t<
-          std::is_integral<U>::value && !std::is_class<U>::value, int> = 0>
-  constexpr const Duration<>& operator*=(const U& rhs) noexcept {
-    // If special, stays same. Else, if multiply by zero, goes zero.
-    if (isSpecial()) return *this;
-    UnitSeconds m(rhs);
-    if (!m) return *this = Duration<>(0);
-    UnitValue sss = value();
-    bool negS0 = (sss.s < 0), negSS0 = (sss.ss < 0);
-    sss.s *= m;
-    sss.ss *= m;
-    bool negS = (sss.s < 0), negSS = (sss.ss < 0);
-    // Check for overflow.
-    // TODO: Can we do better when ss overflows?
-    if (negS0 != negS) category(negS0 ? Category::InfN : Category::InfP);
-    else if (negSS0 != negSS) category(Category::NaN);
-    else *this = Duration<>(sss);
-    return *this;
-  }
 };
 
 template<typename ScalarT, typename ScalarU>
@@ -62,24 +44,24 @@ constexpr const Duration<> operator-(
 }
 
 template<typename ScalarT, typename U,
-    typename std::enable_if_t<
-        std::is_integral<U>::value && !std::is_class<U>::value, int> = 0>
+    typename std::enable_if_t<std::is_integral_v<U> && !std::is_class_v<U>,
+        int> = 0>
 constexpr const Duration<> operator*(
     const Duration<ScalarT>& lhs, const U& rhs) noexcept {
   return Duration<>(lhs) *= rhs;
 }
 
 template<typename ScalarT, typename U,
-    typename std::enable_if_t<
-        std::is_integral<U>::value && !std::is_class<U>::value, int> = 0>
+    typename std::enable_if_t<std::is_integral_v<U> && !std::is_class_v<U>,
+        int> = 0>
 constexpr const Duration<> operator*(
     const U& lhs, const Duration<ScalarT>& rhs) noexcept {
   return rhs * lhs;
 }
 
 template<typename ScalarT, typename U,
-    typename std::enable_if_t<
-        std::is_integral<U>::value && !std::is_class<U>::value, int> = 0>
+    typename std::enable_if_t<std::is_integral_v<U> && !std::is_class_v<U>,
+        int> = 0>
 constexpr const Duration<> operator/(
     const Duration<ScalarT>& lhs, const U& rhs) noexcept {
   return Duration<>(lhs) /= rhs;
@@ -88,3 +70,17 @@ constexpr const Duration<> operator/(
 // TODO: Add slow float support.
 
 } // namespace chronos
+
+template<typename Scalar>
+class std::numeric_limits<chronos::Duration<Scalar>>
+    : public std::numeric_limits<Scalar> {};
+
+// These two enable structured binding.
+template<std::size_t N, typename Scalar>
+struct std::tuple_element<N, chronos::Duration<Scalar>> {
+  using type = decltype(std::get<N>(std::declval<chronos::Duration<Scalar>>()));
+};
+
+template<typename Scalar>
+struct std::tuple_size<chronos::Duration<Scalar>>
+    : public std::integral_constant<std::size_t, 2> {};

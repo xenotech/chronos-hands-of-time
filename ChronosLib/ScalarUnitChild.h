@@ -2,32 +2,32 @@
 #include "ScalarUnit.h"
 
 namespace chronos {
-
+namespace details {
 // Traits.
 template<typename T>
-struct SpecializationTrait {
+struct ScalarChildTraits {
   template<typename U>
   using Other = U;
-  using Specialization = T;
+  using Scalar = T;
 };
 
-// Private child of Scalar, public parent of Child.
+// Private child of ScalarUnit, public parent of Child.
 //
 // The purpose of this class is to factor out the common boilerplate code in
 // classes such as Moment and Duration. To do this, it uses a variation of the
 // curiously-recurring template pattern with some additional template magic to
 // allow sniffing out the specialization of the child.
 template<typename Child>
-class ScalarUnitChild : private SpecializationTrait<Child>::Specialization {
+class ScalarUnitChild : private ScalarChildTraits<Child>::Scalar {
 public:
   // Types.
-  using Scalar = typename SpecializationTrait<Child>::Specialization;
+  using Scalar = typename ScalarChildTraits<Child>::Scalar;
   using Parent = Scalar;
 
   template<typename U>
-  using Other = typename SpecializationTrait<Child>::Other<U>;
+  using Other = typename ScalarChildTraits<Child>::Other<U>;
 
-  // Import methods whose signature is correct, else override and wrap.
+  // Import the methods whose signature is correct, else override and wrap.
   using Scalar::Scalar;
   using Scalar::category;
   using Scalar::seconds;
@@ -87,6 +87,20 @@ public:
   constexpr Child operator--(int) noexcept {
     return Child(Parent::operator--(0).value());
   }
+
+  template<typename U,
+      typename std::enable_if_t<std::is_integral_v<U> && !std::is_class_v<U>,
+          int> = 0>
+  constexpr const Child& operator*=(const U& rhs) noexcept {
+    Parent::operator*=(rhs).value();
+    return static_cast<Child&>(*this);
+  }
 };
 
+} // namespace details
 } // namespace chronos
+
+template<typename Child>
+class std::numeric_limits<chronos::details::ScalarUnitChild<Child>>
+    : public std::numeric_limits<
+          typename chronos::details::ScalarUnitChild<Child>::Scalar> {};

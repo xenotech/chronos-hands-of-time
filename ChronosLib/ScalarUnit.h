@@ -1,23 +1,26 @@
 #pragma once
 #include <iostream>
 #include <compare>
+#include <tuple>
 #include "CanonRep.h"
 #include "RepAdapter.h"
 #include "StreamGuard.h"
 
 namespace chronos {
+namespace details {
 // Scalar unit to hold absolute and relative scalar chronological values, which
-// are then used as base for both Moment and Duration classes.
+// are then used as the base for both the Moment and Duration classes.
 //
 // Templated on a base unit that defines the range, precision, and specific
 // representation. See RepAdapter and CanonRep for details.
-template<typename Rep = CanonRep<>, typename Adapter = RepAdapter<Rep>>
+template<typename Rep = CanonRep<>,
+    template<typename> class Adapter = RepAdapter>
 class ScalarUnit : public SecondsTraits<> {
 public:
   // Types.
   using ScalarUnitT = ScalarUnit<Rep, Adapter>;
   using RepT = Rep;
-  using AdapterT = Adapter;
+  using AdapterT = Adapter<Rep>;
 
   // Public types for ScalarUnit, used for all representations.
   using Seconds = UnitSeconds;
@@ -26,23 +29,24 @@ public:
 
 private:
   // Fields.
-  Adapter m_adapter;
+  AdapterT m_adapter;
 
 public:
   // Ctors.
   constexpr ScalarUnit() noexcept : m_adapter() {}
 
+  // Construct by seconds and optional picoseconds.
   template<typename T,
-      typename std::enable_if_t<
-          std::is_integral<T>::value && !std::is_class<T>::value, int> = 0>
+      typename std::enable_if_t<std::is_integral_v<T> && !std::is_class_v<T>,
+          int> = 0>
   constexpr explicit ScalarUnit(T s, UnitPicos ss = 0) noexcept
       : m_adapter(UnitSeconds(s), ss) {}
 
   // Construct by seconds, then numerator and denominator of picoseconds. Does
   // not detect overflow/underflow.
   template<typename T,
-      typename std::enable_if_t<
-          std::is_integral<T>::value && !std::is_class<T>::value, int> = 0>
+      typename std::enable_if_t<std::is_integral_v<T> && !std::is_class_v<T>,
+          int> = 0>
   constexpr explicit ScalarUnit(
       T s, UnitPicos numerator, UnitPicos denominator) noexcept
       : m_adapter(UnitSeconds(s), (numerator * PicosPerSecond) / denominator) {}
@@ -50,7 +54,7 @@ public:
   // Warning: This is not at all performant. It's not even eval'ed as
   // constexpr.
   template<typename T,
-      typename std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+      typename std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
   constexpr explicit ScalarUnit(T sss) noexcept : m_adapter(fromFloat(sss)) {}
 
   constexpr explicit ScalarUnit(UnitValue sss) noexcept : m_adapter(sss) {}
@@ -59,7 +63,8 @@ public:
 
   constexpr ScalarUnit(const ScalarUnit&) noexcept = default;
 
-  template<typename RepU, typename AdapterU,
+  // TODO: Consider whether it's worth providing a non-templated copy ctor.
+  template<typename RepU, template<typename> class AdapterU,
       typename std::enable_if_t<
           !std::is_same_v<ScalarUnitT, ScalarUnit<RepU, AdapterU>>, int> = 0>
   constexpr explicit ScalarUnit(const ScalarUnit<RepU, AdapterU>& rhs) noexcept
@@ -71,7 +76,8 @@ public:
     return *this;
   }
 
-  template<typename RepU, typename AdapterU,
+  // TODO: Consider whether it's worth providing a non-templated assign op.
+  template<typename RepU, template<typename> class AdapterU,
       typename std::enable_if_t<
           !std::is_same_v<ScalarUnitT, ScalarUnit<RepU, AdapterU>>, int> = 0>
   constexpr ScalarUnit& operator=(
@@ -127,7 +133,7 @@ public:
   // Accessors.
   constexpr Seconds seconds() const noexcept { return m_adapter.seconds(); }
   constexpr Picos subseconds() const noexcept { return m_adapter.subseconds(); }
-  constexpr UnitValue value() const noexcept { return m_adapter.value(); }
+  constexpr Value value() const noexcept { return m_adapter.value(); }
 
   // Arithmetic operators.
 
@@ -139,42 +145,79 @@ public:
     return ScalarUnit(-sss.s, -sss.ss);
   }
 
-  template<typename RepU, typename AdapterU>
+  template<typename RepU, template<typename> class AdapterU>
   constexpr ::std::partial_ordering operator<=>(
       const ScalarUnit<RepU, AdapterU>& rhs) const noexcept {
-    const auto &sssL = value(), sssR = rhs.value();
+    const auto sssL = value(), sssR = rhs.value();
     if (sssL.s == NaN || sssR.s == NaN) return 1 <=> 0;
     if (auto cmp = sssL.s <=> sssR.s; cmp != 0) return cmp;
     return sssL.ss <=> sssR.ss;
   }
 
-  template<typename RepU, typename AdapterU>
+  template<typename RepU, template<typename> class AdapterU>
   constexpr ScalarUnit& operator+=(
       const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
     auto sssL = value(), sssR = rhs.value();
-    // If either is special value, result is special.
-    auto catL = toCategory(sssL.s), catR = toCategory(sssR.s);
-    if (catL != Category::Num || catR != Category::Num)
-      return *this = addCategories(catL, catR);
-    bool negL = m_adapter.isNegative(), negR = rhs.m_adapter.isNegative();
-    sssL.s += sssR.s;
-    sssL.ss += sssR.ss;
-    // Carry when signs are mismatched.
-    if (sssL.s < 0 && sssL.ss > 0) {
-      sssL.ss -= PicosPerSecond;
-      sssL.s++;
-    } else if (sssL.s > 0 && sssL.ss < 0) {
-      sssL.ss += PicosPerSecond;
-      sssL.s--;
-    }
-    m_adapter.value(sssL);
-    // If we added and the sign flipped, overflow.
-    if ((negL == negR) && (m_adapter.isNegative() != negL))
-      *this = negL ? Category::InfN : Category::InfP;
+    if (auto cat = addCategories(toCategory(sssL.s), toCategory(sssR.s));
+        cat != Category::Num)
+      return *this = cat;
+    sssL.ss += sssR.ss; // TODO: Decide if we need addCarry here.
+    // Carry/borrow second on s/ss sign difference.
+    if (sssL.ss > 0 && sssL.s < 0)
+      sssL.ss -= PicosPerSecond, sssL.s++;
+    else if (sssL.ss < 0 && sssL.s > 0)
+      sssL.ss += PicosPerSecond, sssL.s--;
+    if (auto carry = addCarry(sssL.s, sssR.s, sssL.s); carry)
+      *this = (carry < 0) ? Category::InfN : Category::InfP;
+    else
+      m_adapter.value(sssL);
     return *this;
   }
 
-  template<typename RepU, typename AdapterU>
+  // TODO: Factor out dependency on _mul128 and _div128.
+  // TODO: Write div and mod. Write divmod first.
+  template<typename U,
+      typename std::enable_if_t<std::is_integral_v<U> && !std::is_class_v<U>,
+          int> = 0>
+  constexpr const ScalarUnit<>& operator*=(const U& rhs) noexcept {
+    // If special, stays that way.
+    if (isSpecial()) return *this;
+    // Handle multiplication by zero cheaply, as it is common.
+    UnitSeconds m(rhs);
+    if (!m) return *this = ScalarUnit<>(0);
+    UnitValue sss = value();
+    if (!sss.s && !sss.ss) return *this;
+    bool negS0 = (sss.s < 0), negSS0 = (sss.ss < 0), negM = (m < 0);
+    // Multiply whole seconds.
+    if (sss.s) {
+      sss.s *= m;
+      //  bool negS1 = (sss.s < 0);
+      // if (negM && negS0 &&
+    }
+    // Multiply subseconds, then roll whole seconds over.
+    if (sss.ss) {
+      int64_t carry, low = _mul128(sss.ss, m, &carry);
+      sss.s += low / PicosPerSecond, sss.ss = low % PicosPerSecond;
+      // Roll over carry, if any.
+      if (carry) {
+        UnitSeconds ss1, s1 = _div128(carry, 0, PicosPerSecond, &ss1);
+        sss.s += s1, sss.ss += ss1;
+      }
+    }
+    // Check for overflow.
+    bool negS = (sss.s < 0), negSS = (sss.ss < 0);
+    bool negSExpected = negS0 && !negM;
+    if (negS0 != negS)
+      category(negS0 ? Category::InfN : Category::InfP);
+    else if (negSS0 != negSS)
+      category(Category::NaN);
+    else
+      *this = ScalarUnit<>(sss);
+    return *this;
+  }
+
+
+  template<typename RepU, template<typename> class AdapterU>
   constexpr ScalarUnit& operator-=(
       const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
     return (*this) += -ScalarUnit<>(rhs);
@@ -201,7 +244,8 @@ public:
   }
 
   // I/O.
-  std::ostream& dump(std::ostream& os) const {
+  template<class CharT, class Traits>
+  auto dump(std::basic_ostream<CharT, Traits>& os) -> decltype(os) const {
     Category cat = category();
     if (cat == Category::Num) {
       auto sss = value();
@@ -211,7 +255,7 @@ public:
         sss.ss = -sss.ss;
       } else if (sss.s > 0)
         os << "+";
-      const auto& guard = makeStreamFillGuard(os, '0');
+      const auto& guard = StreamFillGuard(os, '0');
       os << sss.s << "." << std::setw(12) << sss.ss << "s";
     } else {
       os << cat;
@@ -228,13 +272,15 @@ public:
   }
 };
 
-template<typename RepT, typename AdapterT, typename RepU, typename AdapterU>
+template<typename RepT, template<typename> class AdapterT, typename RepU,
+    template<typename> class AdapterU>
 constexpr const ScalarUnit<> operator+(const ScalarUnit<RepT, AdapterT>& lhs,
     const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
   return ScalarUnit<>(lhs) += rhs;
 }
 
-template<typename RepT, typename AdapterT, typename RepU, typename AdapterU>
+template<typename RepT, template<typename> class AdapterT, typename RepU,
+    template<typename> class AdapterU>
 constexpr const ScalarUnit<> operator-(const ScalarUnit<RepT, AdapterT>& lhs,
     const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
   return ScalarUnit<>(lhs) -= rhs;
@@ -242,8 +288,21 @@ constexpr const ScalarUnit<> operator-(const ScalarUnit<RepT, AdapterT>& lhs,
 
 using DefaultScalarUnit = ScalarUnit<DefaultBaseRep>;
 using DefaultAdapter = DefaultScalarUnit::AdapterT;
+
+} // namespace details
 } // namespace chronos
 
-template<typename Rep, typename Adapter>
-class std::numeric_limits<chronos::ScalarUnit<Rep, Adapter>>
-    : public std::numeric_limits<Rep> {};
+template<typename RepT, template<typename> class AdapterT>
+class std::numeric_limits<chronos::details::ScalarUnit<RepT, AdapterT>>
+    : public std::numeric_limits<RepT> {};
+
+// These two enable structured binding.
+template<std::size_t N, typename Rep, template<typename> class Adapter>
+struct std::tuple_element<N, chronos::details::ScalarUnit<Rep, Adapter>> {
+  using type = decltype(
+      std::get<N>(std::declval<chronos::details::ScalarUnit<Rep, Adapter>>()));
+};
+
+template<typename Rep, template<typename> class Adapter>
+struct std::tuple_size<chronos::details::ScalarUnit<Rep, Adapter>>
+    : std::integral_constant<std::size_t, 2> {};

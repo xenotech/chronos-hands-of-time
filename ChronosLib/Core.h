@@ -1,5 +1,4 @@
 #pragma once
-
 #include <cstdint>
 #include <limits>
 #include <utility>
@@ -52,12 +51,12 @@ constexpr const UnitSeconds SecondsPerYear = SecondsPerDay * 365;
 // Seconds value categories.
 enum class Category { Num, NaN, InfN, InfP };
 
-struct CategoryAsString {
-  static const std::string CategoryNames[];
-};
-
-inline const std::string& asString(const Category& cat) {
-  return CategoryAsString::CategoryNames[static_cast<int>(cat)];
+// TODO: This would be a fine place to try out supporting a conversion more
+// canonically.
+constexpr const auto& asString(const Category& cat) {
+  static constexpr auto CategoryNames =
+      make_array("Num"sv, "NaN"sv, "-Inf"sv, "+Inf"sv);
+  return CategoryNames[static_cast<int>(cat)];
 }
 
 // These traits define how we partition seconds to make room for NaN, negative
@@ -83,11 +82,9 @@ struct SecondsTraits {
   static constexpr Category addCategories(Category catL, Category catR) {
     if (catL == Category::Num && catR == Category::Num) return Category::Num;
     if (catL == Category::NaN || catR == Category::NaN) return Category::NaN;
-    if (catL == Category::InfP || catL == Category::InfN) {
-      if (catR == Category::Num || catR == catL) return catL;
-      return Category::NaN;
-    }
-    return catR;
+    if (catL != Category::InfP && catL != Category::InfN) return catR;
+    if (catR == Category::Num || catR == catL) return catL;
+    return Category::NaN;
   }
 
   // Get category from seconds value.
@@ -98,5 +95,44 @@ struct SecondsTraits {
     return Category::NaN;
   }
 };
+
+// Details of sniffing out seconds()/subseconds() methods.
+namespace details {
+template<class T, class = void>
+struct has_seconds : std::false_type {};
+
+template<class T>
+struct has_seconds<T,
+    std::void_t<typename decltype(std::declval<T>().seconds())>>
+    : std::true_type {};
+
+template<class T, class = void>
+struct has_subseconds : std::false_type {};
+
+template<class T>
+struct has_subseconds<T,
+    std::void_t<typename decltype(std::declval<T>().subseconds())>>
+    : std::true_type {};
+
+}; // namespace details
+
+// Sniff out chronological scalars by their unique attributes.
+//
+// TODO: It would be nice if this detection allowed us to replace the
+// boilerplate tuple_element and tuple_size structs with a single set which
+// uses SFINAE to constrain itself.
+template<typename T>
+struct is_scalar_unit : std::bool_constant<details::has_seconds<T>::value &&
+                            details::has_subseconds<T>::value &&
+                            std::numeric_limits<T>::is_specialized &&
+                            std::numeric_limits<T>::has_infinity &&
+                            std::numeric_limits<T>::is_exact &&
+                            std::numeric_limits<T>::is_bounded &&
+                            !std::numeric_limits<T>::is_iec559> {};
+
+template<class T>
+constexpr bool is_scalar_unit_v = is_scalar_unit<T>::value;
+
+// TODO: Update the natvis file.
 
 } // namespace chronos

@@ -4,6 +4,7 @@
 #include "Core.h"
 
 namespace chronos {
+namespace details {
 // Canonical representation of linear time.
 //
 // Stores a signed count of seconds and subseconds, both 64 bits by default.
@@ -134,8 +135,9 @@ public:
   constexpr Fractions fractions() const noexcept { return m_fractions; }
   constexpr void fractions(Fractions f) noexcept { m_fractions = f; }
 
-  std::ostream& dump(std::ostream& os) const {
-    auto flagScope = makeStreamFlagsGuard(os, std::ios::hex);
+  template<class CharT, class Traits>
+  auto dump(std::basic_ostream<CharT, Traits>& os) -> decltype(os) const {
+    auto flagScope = StreamFlagsGuard(os, std::ios::hex);
     return os << static_cast<UnitSeconds>(wholes()) << "."
               << static_cast<UnitPicos>(fractions()) << " <" << sizeof(WholesT)
               << ":" << sizeof(FractionsT) << ">";
@@ -145,36 +147,40 @@ private:
   // Create instance from inputs, adjusting signs first. Cleans up the
   // separate inputs to make sure they're compatible.
   constexpr CanonRep create(UnitSeconds s, UnitPicos ss) noexcept {
-    if (s < 0 && ss > 0)
-      ss = -ss;
+    // When seconds are negative, so are subseconds.
+    if (s < 0 && ss > 0) ss = -ss;
+    // But positive seconds can't support negative subseconds.
     else if (s > 0 && ss < 0)
       s = SecondsTraits<>::NaN;
     return create(UnitValue{s, ss});
   }
 
   // Creates instance from inputs, with rollover, scaling, and saturation.
-  constexpr CanonRep create(UnitValue sss) noexcept {
+  constexpr CanonRep create(const UnitValue& sss) noexcept {
+    auto [s, ss] = sss;
     // Nobody puts NaN in a corner.
-    if (sss.s == SecondsTraits<>::NaN) {
-      if constexpr (!usesUnitSeconds) sss.s = NaN;
-      sss.ss = 0;
+    if (s == SecondsTraits<>::NaN) {
+      if constexpr (!usesUnitSeconds) s = NaN;
+      ss = 0;
     } else {
       // Roll over excess subseconds.
-      if (sss.ss <= -PicosPerSecond || sss.ss >= PicosPerSecond) {
-        sss.s += sss.ss / PicosPerSecond;
-        sss.ss %= PicosPerSecond;
+      if (ss <= -PicosPerSecond || ss >= PicosPerSecond) {
+        if (addCarry(s, ss / PicosPerSecond, s) == 0)
+          ss %= PicosPerSecond;
+        else
+          s = (s < 0) ? InfN : InfP;
       }
       // Saturate to infinity, with scaling.
-      if (sss.s > Max) {
-        if constexpr (!usesUnitSeconds) sss.s = InfP;
-        sss.ss = 0;
-      } else if (sss.s < Min) {
-        if constexpr (!usesUnitSeconds) sss.s = InfN;
-        sss.ss = 0;
+      if (s > Max) {
+        if constexpr (!usesUnitSeconds) s = InfP;
+        ss = 0;
+      } else if (s < Min) {
+        if constexpr (!usesUnitSeconds) s = InfN;
+        ss = 0;
       }
     }
-    Wholes w = calcWholes(sss.s);
-    Fractions f = calcFractions(sss.ss);
+    Wholes w = calcWholes(s);
+    Fractions f = calcFractions(ss);
     return CanonRep(Raw::raw, w, f);
   }
 
@@ -220,16 +226,22 @@ private:
 };
 
 using DefaultBaseRep = CanonRep<UnitSeconds, UnitPicos>;
+} // namespace details
 } // namespace chronos
 
 // TODO: This needs testing.
+//
+// TODO: The classes that inherit this need to shadow the methods so that the
+// correct type is returned. This should be automatic, which likely means
+// layering the const-only class as the  base, with the child taking the type to
+// return.
 template<typename Wholes, typename Fractions, typename SecondsToWholes,
     typename FractionsToSeconds>
-class std::numeric_limits<
-    chronos::CanonRep<Wholes, Fractions, SecondsToWholes, FractionsToSeconds>> {
+class std::numeric_limits<chronos::details::CanonRep<Wholes, Fractions,
+    SecondsToWholes, FractionsToSeconds>> {
 public:
-  using CanonRepT =
-      chronos::CanonRep<Wholes, Fractions, SecondsToWholes, FractionsToSeconds>;
+  using CanonRepT = chronos::details::CanonRep<Wholes, Fractions,
+      SecondsToWholes, FractionsToSeconds>;
   using SecondsT = typename CanonRepT::WholesT;
   using FractionsT = typename CanonRepT::FractionsT;
 
@@ -268,7 +280,7 @@ public:
         CanonRepT::Raw::raw, CanonRepT::NaN, FractionsToSeconds::Num - 1);
   }
 
-  static constexpr float_denorm_style has_denorm = denorm_absent;
+  static constexpr float_denorm_style has_denorm = denorm_present;
   static constexpr bool has_denorm_loss = false;
   static constexpr bool has_infinity = true;
   static constexpr bool has_quiet_NaN = true;
