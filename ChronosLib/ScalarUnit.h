@@ -157,25 +157,26 @@ public:
   template<typename RepU, template<typename> class AdapterU>
   constexpr ScalarUnit& operator+=(
       const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
-    auto sssL = value(), sssR = rhs.value();
-    if (auto cat = addCategories(toCategory(sssL.s), toCategory(sssR.s));
+    auto [sL, ssL] = value();
+    auto [sR, ssR] = rhs.value();
+    if (auto cat = addCategories(toCategory(sL), toCategory(sR));
         cat != Category::Num)
       return *this = cat;
-    sssL.ss += sssR.ss; // TODO: Decide if we need addCarry here.
+    ssL = addWrapped(ssL, ssR);
     // Carry/borrow second on s/ss sign difference.
-    if (sssL.ss > 0 && sssL.s < 0)
-      sssL.ss -= PicosPerSecond, sssL.s++;
-    else if (sssL.ss < 0 && sssL.s > 0)
-      sssL.ss += PicosPerSecond, sssL.s--;
-    if (auto carry = addCarry(sssL.s, sssR.s, sssL.s); carry)
-      *this = (carry < 0) ? Category::InfN : Category::InfP;
-    else
-      m_adapter.value(sssL);
+    if (ssL > 0 && sL < 0)
+      ssL -= PicosPerSecond, sL++;
+    else if (ssL < 0 && sL > 0)
+      ssL += PicosPerSecond, sL--;
+    if (!addSafely(sL, sR, sL))
+      return *this = (sL > 0) ? Category::InfN : Category::InfP;
+    m_adapter.value(UnitValue{sL, ssL});
     return *this;
   }
 
   // TODO: Factor out dependency on _mul128 and _div128.
   // TODO: Write div and mod. Write divmod first.
+  // TODO: This is currently wrong. Make it right.
   template<typename U,
       typename std::enable_if_t<std::is_integral_v<U> && !std::is_class_v<U>,
           int> = 0>
@@ -215,7 +216,6 @@ public:
       *this = ScalarUnit<>(sss);
     return *this;
   }
-
 
   template<typename RepU, template<typename> class AdapterU>
   constexpr ScalarUnit& operator-=(

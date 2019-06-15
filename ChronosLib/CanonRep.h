@@ -165,7 +165,7 @@ private:
     } else {
       // Roll over excess subseconds.
       if (ss <= -PicosPerSecond || ss >= PicosPerSecond) {
-        if (addCarry(s, ss / PicosPerSecond, s) == 0)
+        if (addSafely(s, ss / PicosPerSecond, s))
           ss %= PicosPerSecond;
         else
           s = (s < 0) ? InfN : InfP;
@@ -233,8 +233,8 @@ using DefaultBaseRep = CanonRep<UnitSeconds, UnitPicos>;
 //
 // TODO: The classes that inherit this need to shadow the methods so that the
 // correct type is returned. This should be automatic, which likely means
-// layering the const-only class as the  base, with the child taking the type to
-// return.
+// layering the const-only class as the  base, with the child taking the type
+// to return.
 template<typename Wholes, typename Fractions, typename SecondsToWholes,
     typename FractionsToSeconds>
 class std::numeric_limits<chronos::details::CanonRep<Wholes, Fractions,

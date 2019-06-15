@@ -143,7 +143,7 @@ TEST(AddCarry, ChronosTest) {
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, 1);
   EXPECT_EQ(c, 0);
-#if 0
+
   a = -1, b = 0;
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, 0);
@@ -152,7 +152,7 @@ TEST(AddCarry, ChronosTest) {
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, 0);
   EXPECT_EQ(c, -1);
-  a = -min, b = -min;
+  a = min, b = min;
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, -1);
   EXPECT_EQ(c, min + 1);
@@ -163,7 +163,7 @@ TEST(AddCarry, ChronosTest) {
   a = min + 1, b = -2;
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, -1);
-  EXPECT_EQ(c, -1);
+  EXPECT_EQ(c, 0);
   a = min / 2, b = min / 2;
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, 0);
@@ -171,12 +171,11 @@ TEST(AddCarry, ChronosTest) {
   a = min / 2 - 1, b = min / 2 - 1;
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, -1);
-  EXPECT_EQ(c, -2);
+  EXPECT_EQ(c, -1);
   a = min, b = 0;
   carry = addCarry(a, b, c);
   EXPECT_EQ(carry, 0);
   EXPECT_EQ(c, min);
-#endif
 }
 
 TEST(NoCompile, ChronosTest) {

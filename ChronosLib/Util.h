@@ -8,58 +8,64 @@
 namespace chronos {
 // General utilities.
 
+// A note about signed and unsigned wrapping.
+//
+// Unsigned integers have well-defined wrapping behavior, but wrapping for
+// signed integers (which amounts to overflow or underflow) is intentionally
+// undefined. As a result, the compiler is allowed to optimize on the basis of
+// signed wrapping being "impossible". The fix for this is to do the math
+// unsigned, then cast back. This works for all hardware with two's-complement
+// integers, which is to say all hardware. If there's any concern about one day
+// running on a one's-complement machine or some other weirdness, a static
+// assert could be added.
+
+// Do addition with well-defined wrapping.
+constexpr int64_t addWrapped(int64_t a, int64_t b) {
+  return static_cast<int64_t>(
+      static_cast<uint64_t>(a) + static_cast<uint64_t>(b));
+}
+
+// Do subtraction with well-defined wrapping.
+constexpr int64_t subWrapped(int64_t a, int64_t b) {
+  return static_cast<int64_t>(
+      static_cast<uint64_t>(a) - static_cast<uint64_t>(b));
+}
+
+// Sets c to the sum of a and b. If there was underflow or overflow, return
+// false. Otherwise, return true.
+constexpr bool addSafely(int64_t a, int64_t b, int64_t& c) {
+  // Since signed underflow/overflow is not defined, we use unsigned.
+  c = addWrapped(a, b);
+
+  // If the inputs have different signs, safe because overflow/underflow is
+  // impossible.
+  bool aNeg(a < 0), bNeg(b < 0);
+  if (aNeg != bNeg) return true;
+
+  // If the output sign matches the input sign, safe because there was no
+  // overflow/underflow.
+  bool cNeg(c < 0);
+  if (aNeg == cNeg) return true;
+
+  // We overflowed/underflowed, so unsafe.
+  return false;
+}
+
 // Sets c to the sum of a and b, returning the carry. The carry is 0 (safe), 1
 // (carry/overflow), or -1 (borrow/underflow). It is safe to reuse an input as
 // an output.
-//
-// Note that a carry of 1 means maxSigned, while a carry of -1 means minSigned,
-// which is one past -maxSigned.
-//
-// TODO: Ideally, there would be compiler-specific versions which either take
-// advantage of intrinsics or direct support for 128-bit ints. Worst case,
-// there's boost/multiprecision/cpp_int.hpp. For now, we're doing things the
-// hard way because it's more educational and because it's isolated enough for
-// later performance tuning.
-//
-// BUG: Using this in CanonRep::create apparently complicates the AST to the
-// point where, despite being constexpr, constructing a NaN causes runtime
-// calls to be generated. This is true even though no actual calls are made to
-// addCarry on that code path.
 constexpr int64_t addCarry(int64_t a, int64_t b, int64_t& c) {
-  constexpr uint64_t maxSigned = std::numeric_limits<int64_t>::max();
-  constexpr uint64_t minSigned = std::numeric_limits<int64_t>::min();
-  bool aNeg(a < 0), bNeg(b < 0);
-  // Mixed signs can't overflow.
-  if (aNeg != bNeg) {
-    std::swap(a, b);
-    c = a + b;
-    return 0;
+  if (addSafely(a, b, c)) return 0;
+
+  if (c < 0) {
+    // Overflow, so carry.
+    c = subWrapped(c, std::numeric_limits<int64_t>::min());
+    return +1;
+  } else {
+    // Underflow, so borrow.
+    c = subWrapped(c, std::numeric_limits<int64_t>::max());
+    return -1;
   }
-
-  // Unsigned overflow is defined, so go unsigned.
-  if (aNeg) a = -a, b = -b;
-  uint64_t aa = a, bb = b, cc = aa + bb;
-
-  int64_t carry = 0;
-  if (aNeg) {
-    // If underflow, borrow.
-    if (cc > minSigned) {
-      cc -= minSigned;
-      carry = -1;
-    }
-    // Adjust sign back to negative.
-    c = -int64_t(cc);
-    return carry;
-  }
-
-  // If overflow, carry.
-  if (cc > maxSigned) {
-    cc -= maxSigned + 1;
-    carry = 1;
-  }
-
-  c = int64_t(cc);
-  return carry;
 }
 
 using namespace std::string_view_literals;
@@ -85,8 +91,8 @@ inline auto operator<<(::std::basic_ostream<CharT, Traits>& os,
 //
 // Arguably, this is a hack. The right answer would either to look for a
 // conversion operator or a to_string member or function. We probably want to
-// support string_view, as well as string. But we don't want to cause ambiguity
-// with std::to_string/to_wstring when streaming primitive numbers.
+// support string_view, as well as string. But we don't want to cause
+// ambiguity with std::to_string/to_wstring when streaming primitive numbers.
 //
 // TODO: Consider doing the arguably right thing.
 template<typename Stringable>
@@ -109,9 +115,9 @@ inline auto operator<<(::std::ostream& os, const Stringable& item)
 // Get qualified type name.
 template<class T>
 std::string type_name() {
-  // While typeid() works for all compliant compilers, its output is not always
-  // human-readable. It happens to be readable in MSVC. Either way it also
-  // requires explicit checks to add modifiers.
+  // While typeid() works for all compliant compilers, its output is not
+  // always human-readable. It happens to be readable in MSVC. Either way it
+  // also requires explicit checks to add modifiers.
   //
   // For GNU, abi::__cxa_demangle lets you convert the mangled form to
   // human-readable, but it's an ugly, overspecific API.
