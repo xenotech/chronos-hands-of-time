@@ -79,7 +79,8 @@ struct SecondsTraits {
   static constexpr const Units NaN = std::numeric_limits<Units>::min();
 
   // Resolve special categories under addition.
-  static constexpr Category addCategories(Category catL, Category catR) {
+  static constexpr Category addCategories(
+      Category catL, Category catR) noexcept {
     if (catL == Category::Num && catR == Category::Num) return Category::Num;
     if (catL == Category::NaN || catR == Category::NaN) return Category::NaN;
     if (catL != Category::InfP && catL != Category::InfN) return catR;

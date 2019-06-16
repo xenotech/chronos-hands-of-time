@@ -114,69 +114,6 @@ TEST(StructuredBinding, ChronosTest) {
   }
 }
 
-TEST(AddCarry, ChronosTest) {
-  constexpr int64_t max = std::numeric_limits<int64_t>::max();
-  constexpr int64_t min = std::numeric_limits<int64_t>::min();
-  int64_t a, b, c, carry;
-  a = 0, b = 0;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 0);
-  EXPECT_EQ(c, 0);
-
-  a = 1, b = 0;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 0);
-  EXPECT_EQ(c, 1);
-  a = max, b = 1;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 1);
-  EXPECT_EQ(c, 0);
-  a = max, b = max;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 1);
-  EXPECT_EQ(c, max - 1);
-  a = max / 2, b = max / 2;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 0);
-  EXPECT_EQ(c, max - 1);
-  a = max / 2 + 1, b = max / 2 + 1;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 1);
-  EXPECT_EQ(c, 0);
-
-  a = -1, b = 0;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 0);
-  EXPECT_EQ(c, -1);
-  a = 0, b = -1;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 0);
-  EXPECT_EQ(c, -1);
-  a = min, b = min;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, -1);
-  EXPECT_EQ(c, min + 1);
-  a = min, b = -1;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, -1);
-  EXPECT_EQ(c, 0);
-  a = min + 1, b = -2;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, -1);
-  EXPECT_EQ(c, 0);
-  a = min / 2, b = min / 2;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 0);
-  EXPECT_EQ(c, min);
-  a = min / 2 - 1, b = min / 2 - 1;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, -1);
-  EXPECT_EQ(c, -1);
-  a = min, b = 0;
-  carry = addCarry(a, b, c);
-  EXPECT_EQ(carry, 0);
-  EXPECT_EQ(c, min);
-}
 
 TEST(NoCompile, ChronosTest) {
   static_assert(copy_allowed<int, int>::value);
@@ -243,6 +180,70 @@ TEST(NoCompile, ChronosTest) {
   //* f = (s1 < m1);
   //* f = (s1 < d1);
   //* f = (m1 < d1);
+}
+
+TEST(AddCarry, ChronosTest) {
+  constexpr int64_t max = std::numeric_limits<int64_t>::max();
+  constexpr int64_t min = std::numeric_limits<int64_t>::min();
+  int64_t a, b, c, carry;
+  a = 0, b = 0;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 0);
+  EXPECT_EQ(c, 0);
+
+  a = 1, b = 0;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 0);
+  EXPECT_EQ(c, 1);
+  a = max, b = 1;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 1);
+  EXPECT_EQ(c, 0);
+  a = max, b = max;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 1);
+  EXPECT_EQ(c, max - 1);
+  a = max / 2, b = max / 2;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 0);
+  EXPECT_EQ(c, max - 1);
+  a = max / 2 + 1, b = max / 2 + 1;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 1);
+  EXPECT_EQ(c, 0);
+
+  a = -1, b = 0;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 0);
+  EXPECT_EQ(c, -1);
+  a = 0, b = -1;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 0);
+  EXPECT_EQ(c, -1);
+  a = min, b = min;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, -1);
+  EXPECT_EQ(c, min + 1);
+  a = min, b = -1;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, -1);
+  EXPECT_EQ(c, 0);
+  a = min + 1, b = -2;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, -1);
+  EXPECT_EQ(c, 0);
+  a = min / 2, b = min / 2;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 0);
+  EXPECT_EQ(c, min);
+  a = min / 2 - 1, b = min / 2 - 1;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, -1);
+  EXPECT_EQ(c, -1);
+  a = min, b = 0;
+  carry = addCarry(a, b, c);
+  EXPECT_EQ(carry, 0);
+  EXPECT_EQ(c, min);
 }
 
 template<typename Unit>
@@ -321,6 +322,13 @@ TEST(CtorDefault, ChronosTest) {
 
 TEST(CtorFloat, ChronosTest) {
   using Unit = details::ScalarUnit<>;
+
+  // Test constexpr support.
+  {
+    constexpr Unit a(1), b(1.0);
+    EXPECT_EQ(a, b); DUMP(a); DUMP(b);
+  }
+
   Unit a, b;
   a = Unit(1);
   b = Unit(1.0);
@@ -442,6 +450,36 @@ TEST(ScalarCompare, ChronosTest) {
 template <typename Unit>
 void testAdd() {
   Unit a, b, c, d;
+
+  // This test also ensures that op+ CAN be constexpr.
+  {
+    constexpr Unit a(Category::NaN);
+    constexpr Unit b(Category::NaN);
+    constexpr Unit c = a + b;
+    // NaN is never equal to anything.
+    EXPECT_NE(a, b);
+    EXPECT_TRUE(c.isNaN());
+    DUMP(a); DUMP(b); DUMP(c);
+  }
+
+  // The next line generates runtime calculations, not because it has to, but
+  // because it can. To quote some randomly-chosen guy named Bjarne: "The
+  // correct answer - as stated by Herb - is that according to the standard a
+  // constexpr function may be evaluated at compiler time or run time unless it
+  // is used as a constant expression, in which case it must be evaluated at
+  // compile-time. To guarantee compile-time evaluation, we must either use it
+  // where a constant expression is required (e.g., as an array bound or as a
+  // case label) or use it to initialize a constexpr. I would hope that no
+  // self-respecting compiler would miss the optimization opportunity to do
+  // what I originally said: "A constexpr function is evaluated at compile time
+  // if all its arguments are constant expressions."
+  //
+  // This poor, innocent fool then followed up with "I have not tried the
+  // latest compilers. What do they do?". Well, the answer for MSVC is that,
+  // when the function is bigger than whatever metric it uses for deciding
+  // maximum complexity, it fails to optimize it away. Boo, MSVC. Boo.
+  c = b + a;
+  EXPECT_FALSE(c.isNaN());
 
   // NaN plus.
   a = Unit(Category::NaN);

@@ -1,6 +1,5 @@
 #pragma once
 #include "ScalarUnitChild.h"
-#include <intrin.h>
 
 namespace chronos {
 // Forward.

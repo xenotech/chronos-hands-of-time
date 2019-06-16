@@ -5,6 +5,9 @@
 #include <typeinfo>
 #include <utility>
 
+// TODO: ifdef for MSVC.
+#include <intrin.h>
+
 namespace chronos {
 // General utilities.
 
@@ -20,20 +23,20 @@ namespace chronos {
 // assert could be added.
 
 // Do addition with well-defined wrapping.
-constexpr int64_t addWrapped(int64_t a, int64_t b) {
+constexpr int64_t addWrapped(int64_t a, int64_t b) noexcept {
   return static_cast<int64_t>(
       static_cast<uint64_t>(a) + static_cast<uint64_t>(b));
 }
 
 // Do subtraction with well-defined wrapping.
-constexpr int64_t subWrapped(int64_t a, int64_t b) {
+constexpr int64_t subWrapped(int64_t a, int64_t b) noexcept {
   return static_cast<int64_t>(
       static_cast<uint64_t>(a) - static_cast<uint64_t>(b));
 }
 
 // Sets c to the sum of a and b. If there was underflow or overflow, return
 // false. Otherwise, return true.
-constexpr bool addSafely(int64_t a, int64_t b, int64_t& c) {
+constexpr bool addSafely(int64_t a, int64_t b, int64_t& c) noexcept {
   // Since signed underflow/overflow is not defined, we use unsigned.
   c = addWrapped(a, b);
 
@@ -54,7 +57,7 @@ constexpr bool addSafely(int64_t a, int64_t b, int64_t& c) {
 // Sets c to the sum of a and b, returning the carry. The carry is 0 (safe), 1
 // (carry/overflow), or -1 (borrow/underflow). It is safe to reuse an input as
 // an output.
-constexpr int64_t addCarry(int64_t a, int64_t b, int64_t& c) {
+constexpr int64_t addCarry(int64_t a, int64_t b, int64_t& c) noexcept {
   if (addSafely(a, b, c)) return 0;
 
   if (c < 0) {
@@ -66,6 +69,28 @@ constexpr int64_t addCarry(int64_t a, int64_t b, int64_t& c) {
     c = subWrapped(c, std::numeric_limits<int64_t>::max());
     return -1;
   }
+}
+
+// Multiplies a by b, setting cLo to the low half of the answer and returning
+// the high half. This makes it easy to check for whether the answer is too
+// large to fit entirely in cLo.
+int64_t mul128(int64_t a, int64_t b, int64_t& cLo) {
+  // TODO: Implement this conditionally for various compilers. It would be nice
+  // if there were a way to make it constexpr without doing piecewise
+  // multiplication. Ditto for div128.
+  int64_t cHi;
+  cLo = _mul128(a, b, &cHi);
+  return cHi;
+}
+
+// Divides the 128-bit value split between dividendHi and dividendLo by
+// divisor, setting quotient and returning the remainder. This makes it easy to
+// check for whether the dividend was a multiple of the divisor.
+int64_t div128(int64_t dividendHi, int64_t dividendLo, int64_t divisor,
+    int64_t& quotient) {
+  int64_t remainder;
+  quotient = _div128(dividendHi, dividendHi, divisor, &remainder);
+  return remainder;
 }
 
 using namespace std::string_view_literals;

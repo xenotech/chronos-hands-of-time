@@ -157,28 +157,25 @@ private:
 
   // Creates instance from inputs, with rollover, scaling, and saturation.
   constexpr CanonRep create(const UnitValue& sss) noexcept {
-    auto [s, ss] = sss;
+    // TODO: Figure out why using structured binding here causes a compiler
+    // error related to constexpr.
+    UnitSeconds s = sss.s;
+    UnitPicos ss = sss.ss;
     // Nobody puts NaN in a corner.
-    if (s == SecondsTraits<>::NaN) {
-      if constexpr (!usesUnitSeconds) s = NaN;
-      ss = 0;
-    } else {
-      // Roll over excess subseconds.
-      if (ss <= -PicosPerSecond || ss >= PicosPerSecond) {
-        if (addSafely(s, ss / PicosPerSecond, s))
-          ss %= PicosPerSecond;
-        else
-          s = (s < 0) ? InfN : InfP;
-      }
-      // Saturate to infinity, with scaling.
-      if (s > Max) {
-        if constexpr (!usesUnitSeconds) s = InfP;
-        ss = 0;
-      } else if (s < Min) {
-        if constexpr (!usesUnitSeconds) s = InfN;
-        ss = 0;
-      }
-    }
+    if (s == SecondsTraits<>::NaN) return createRaw(NaN, 0);
+    // Roll over excess subseconds.
+    if (ss <= -PicosPerSecond || ss >= PicosPerSecond)
+      if (addSafely(s, ss / PicosPerSecond, s))
+        return createRaw(s, ss % PicosPerSecond);
+      else
+        return createRaw((s < 0) ? InfN : InfP, 0);
+    // Saturate to infinity, with scaling.
+    if (s > Max) return createRaw(InfP, 0);
+    if (s < Min) return createRaw(InfN, 0);
+    return createRaw(s, ss);
+  }
+
+  static constexpr CanonRep createRaw(UnitSeconds s, UnitPicos ss) noexcept {
     Wholes w = calcWholes(s);
     Fractions f = calcFractions(ss);
     return CanonRep(Raw::raw, w, f);
@@ -206,14 +203,12 @@ private:
   }
 
   static constexpr Fractions calcFractions(UnitPicos p) {
-    Fractions f;
     if constexpr (usesUnitPicos)
-      f = p;
+      return static_cast<Fractions>(p);
     else {
       // TODO: Scale.
-      f = static_cast<Fractions>(p);
+      return static_cast<Fractions>(p);
     }
-    return f;
   }
 
   constexpr UnitPicos calcPicos() const noexcept {

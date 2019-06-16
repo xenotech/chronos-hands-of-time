@@ -51,8 +51,6 @@ public:
       T s, UnitPicos numerator, UnitPicos denominator) noexcept
       : m_adapter(UnitSeconds(s), (numerator * PicosPerSecond) / denominator) {}
 
-  // Warning: This is not at all performant. It's not even eval'ed as
-  // constexpr.
   template<typename T,
       typename std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
   constexpr explicit ScalarUnit(T sss) noexcept : m_adapter(fromFloat(sss)) {}
@@ -157,63 +155,51 @@ public:
   template<typename RepU, template<typename> class AdapterU>
   constexpr ScalarUnit& operator+=(
       const ScalarUnit<RepU, AdapterU>& rhs) noexcept {
-    auto [sL, ssL] = value();
-    auto [sR, ssR] = rhs.value();
-    if (auto cat = addCategories(toCategory(sL), toCategory(sR));
-        cat != Category::Num)
-      return *this = cat;
-    ssL = addWrapped(ssL, ssR);
-    // Carry/borrow second on s/ss sign difference.
+    // TODO: Figure out why using structured binding here causes a compiler
+    // error related to constexpr.
+    UnitValue sssL = value(), sssR = rhs.value();
+    UnitSeconds sL = sssL.s, sR = sssR.s;
+    UnitPicos ssL = sssL.ss, ssR = sssR.ss;
+    auto cat = addCategories(toCategory(sL), toCategory(sR));
+    if (cat != Category::Num) return *this = cat;
+    ssL += ssR;
+    // Carry or borrow second on s/ss sign difference.
     if (ssL > 0 && sL < 0)
       ssL -= PicosPerSecond, sL++;
     else if (ssL < 0 && sL > 0)
       ssL += PicosPerSecond, sL--;
-    if (!addSafely(sL, sR, sL))
-      return *this = (sL > 0) ? Category::InfN : Category::InfP;
-    m_adapter.value(UnitValue{sL, ssL});
-    return *this;
+    // Add seconds, with saturation.
+    if (!addSafely(sL, sR, sL)) return overflow(sL > 0);
+    return set(sL, ssL);
   }
 
-  // TODO: Factor out dependency on _mul128 and _div128.
-  // TODO: Write div and mod. Write divmod first.
-  // TODO: This is currently wrong. Make it right.
+  // TODO: It compiles, but now it's time to test it.
   template<typename U,
       typename std::enable_if_t<std::is_integral_v<U> && !std::is_class_v<U>,
           int> = 0>
-  constexpr const ScalarUnit<>& operator*=(const U& rhs) noexcept {
-    // If special, stays that way.
+  constexpr ScalarUnit& operator*=(const U& rhs) noexcept {
     if (isSpecial()) return *this;
-    // Handle multiplication by zero cheaply, as it is common.
-    UnitSeconds m(rhs);
+    // Handle mul by zero up front, both as an optimization and simplification.
+    const UnitSeconds& m = rhs;
     if (!m) return *this = ScalarUnit<>(0);
     UnitValue sss = value();
-    if (!sss.s && !sss.ss) return *this;
-    bool negS0 = (sss.s < 0), negSS0 = (sss.ss < 0), negM = (m < 0);
-    // Multiply whole seconds.
-    if (sss.s) {
-      sss.s *= m;
-      //  bool negS1 = (sss.s < 0);
-      // if (negM && negS0 &&
-    }
+    UnitSeconds s = sss.s;
+    UnitPicos ss = sss.ss;
+    if (!s && !ss) return *this;
+    bool sNeg(s < 0), mNeg(s < 0), outNeg(sNeg == mNeg);
+    // Multiply whole seconds, saturating to infinity on overflow.
+    if (s && mul128(s, m, s)) return overflow(outNeg);
+    if (!ss) return set(s, ss);
     // Multiply subseconds, then roll whole seconds over.
-    if (sss.ss) {
-      int64_t carry, low = _mul128(sss.ss, m, &carry);
-      sss.s += low / PicosPerSecond, sss.ss = low % PicosPerSecond;
-      // Roll over carry, if any.
-      if (carry) {
-        UnitSeconds ss1, s1 = _div128(carry, 0, PicosPerSecond, &ss1);
-        sss.s += s1, sss.ss += ss1;
-      }
+    UnitPicos res, carry = mul128(ss, m, res);
+    UnitSeconds sOver = res / PicosPerSecond;
+    ss = res % PicosPerSecond;
+    if (carry) {
+      ss += div128(carry, 0, PicosPerSecond, res);
+      sOver += res;
+      if (!addSafely(s, sOver, s)) return overflow(outNeg);
     }
-    // Check for overflow.
-    bool negS = (sss.s < 0), negSS = (sss.ss < 0);
-    bool negSExpected = negS0 && !negM;
-    if (negS0 != negS)
-      category(negS0 ? Category::InfN : Category::InfP);
-    else if (negSS0 != negSS)
-      category(Category::NaN);
-    else
-      *this = ScalarUnit<>(sss);
+    m_adapter.value(UnitValue{s, ss});
     return *this;
   }
 
@@ -265,12 +251,21 @@ public:
   }
 
   static constexpr UnitValue fromFloat(double sss) noexcept {
-    double s = trunc(sss);
-    double ss = sss - s;
-    return UnitValue{static_cast<UnitSeconds>(s),
-        static_cast<UnitSeconds>(ss * PicosPerSecond)};
+    UnitSeconds s = static_cast<UnitSeconds>(sss);
+    UnitPicos ss = static_cast<UnitPicos>((sss - s) * PicosPerSecond);
+    return UnitValue{s, ss};
   }
-};
+
+private:
+  constexpr ScalarUnit& overflow(bool neg) {
+    return *this = (neg) ? Category::InfN : Category::InfP;
+  }
+
+  constexpr ScalarUnit& set(UnitSeconds s, UnitPicos ss) {
+    m_adapter.value(UnitValue{s, ss});
+    return *this;
+  }
+}; // namespace details
 
 template<typename RepT, template<typename> class AdapterT, typename RepU,
     template<typename> class AdapterU>

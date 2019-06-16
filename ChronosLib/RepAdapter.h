@@ -129,7 +129,7 @@ class std::numeric_limits<chronos::RepAdapter<Rep>>
 namespace std {
 template<std::size_t N, typename Unit>
 constexpr auto get(const Unit& su,
-    std::enable_if_t<chronos::is_scalar_unit_v<Unit>>* = nullptr) {
+    std::enable_if_t<chronos::is_scalar_unit_v<Unit>>* = nullptr) noexcept {
   if constexpr (N == 0)
     return su.seconds();
   else if constexpr (N == 1)
