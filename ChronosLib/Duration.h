@@ -66,7 +66,15 @@ constexpr const Duration<> operator/(
   return Duration<>(lhs) /= rhs;
 }
 
-// TODO: Add slow float support.
+// TODO: Add float support.
+
+// TODO: Figure out why this hack is needed. Minimally, see if it can be moved
+// up to the parent. Otherwise, do this for Moment.
+template<typename Scalar, class CharT, class Traits>
+inline ::std::basic_ostream<CharT, Traits>& operator<<(
+    ::std::basic_ostream<CharT, Traits>& os, const Duration<Scalar>& item) {
+  return Scalar(item.value()).dump(os);
+}
 
 } // namespace chronos
 

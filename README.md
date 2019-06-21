@@ -1,4 +1,4 @@
-![This project is not called Big Ben](https://upload.wikimedia.org/wikipedia/commons/a/a6/Big_Ben_Clock_Face.jpg)
+﻿![This project is not called Big Ben](https://upload.wikimedia.org/wikipedia/commons/a/a6/Big_Ben_Clock_Face.jpg)
 
 chronos: the hands of time
 ==========================
@@ -9,7 +9,7 @@ You see, long ago—before the advent of the digital display—there was the **a
 
 It is from this deep insight—and not any sort of trite [pop-culture](https://en.wikipedia.org/wiki/Manos:_The_Hands_of_Fate) reference—that `chronos: the hands of time` came to be. Like the analog clock of yore, it has a big hand and a little hand. One indicates seconds (measured in seconds), the other indicates subseconds (measured in picoseconds, naturally). Together, they tell the time. And date, actually.
 
-You'll see. It'll be amazing. Or, at any rate, it can't possibly be any worse than that [`std::chrono`](https://en.cppreference.com/w/cpp/header/chrono) monstrosity. Look at how the ANSI committee left off the all-important `s` at the end. Not only does the letter signify the plural, making it inherently better than the singular, but it adds caché to it by alluding to Greek [philosophy](https://en.wikipedia.org/wiki/Chronos) (not [mythology](https://en.wikipedia.org/wiki/Cronus)), and does so in a startlingly [original](http://lmgtfy.com/?q=chronos+the+hands+of+time) manner.
+You'll see. It'll be amazing. Or, at any rate, it can't possibly be any worse than that [`std::chrono`](https://en.cppreference.com/w/cpp/header/chrono) monstrosity. Look at how the ANSI committee left off the all-important `s` at the end. Not only does the letter signify the plural, making it inherently better than the singular, but it adds cachet to it by alluding to Greek [philosophy](https://en.wikipedia.org/wiki/Chronos) (not [mythology](https://en.wikipedia.org/wiki/Cronus)), and does so in a startlingly [original](http://lmgtfy.com/?q=chronos+the+hands+of+time) manner.
 
 If I was any more pretentious, I'd have named this library [Musica Universalis](https://en.wikipedia.org/wiki/Musica_universalis), but `mu` is too short to make a good namespace. It also brings back sad memories of Lemuria and Atlantis (hey, I'm even older than I look!), so you were spared. As it was, I almost went with [`aion`](https://en.wikipedia.org/wiki/Aion_(deity)) or even [`kairos`](https://en.wikipedia.org/wiki/Kairos). It was a near thing, but I decided they were too obscure, and I did not respect you enough to take the risk that you would fail to understand the reference.
 

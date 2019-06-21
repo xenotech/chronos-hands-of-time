@@ -28,19 +28,17 @@ private:
 
 // Creates a scope that preserves the stream's fill character and restores it
 // on exit.
-template<class CharT, class Traits>
+template<typename Stream>
 class StreamFillGuard {
 public:
-  using OStreamT = std::basic_ostream<CharT, Traits>;
-
-  explicit StreamFillGuard(OStreamT& s) : m_stream(s), m_fillChar(s.fill()) {}
-  StreamFillGuard(OStreamT& s, int fc) : m_stream(s), m_fillChar(s.fill(fc)) {}
+  explicit StreamFillGuard(Stream& s) : m_stream(s), m_fillChar(s.fill()) {}
+  StreamFillGuard(Stream& s, char fc) : m_stream(s), m_fillChar(s.fill(fc)) {}
   ~StreamFillGuard() { m_stream.fill(m_fillChar); };
-  OStreamT& operator*() const { return m_stream; }
+  Stream& operator*() const { return m_stream; }
 
 private:
-  OStreamT& m_stream;
-  CharT m_fillChar;
+  Stream& m_stream;
+  char m_fillChar;
 };
 
 // Creates a scope that preserves the stream's default width and restores it on

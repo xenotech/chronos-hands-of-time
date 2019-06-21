@@ -33,6 +33,10 @@ public:
   using Scalar::seconds;
   using Scalar::subseconds;
   using Scalar::value;
+  using Scalar::InfP;
+  using Scalar::InfN;
+  using Scalar::NaN;
+  using Scalar::Min;
   using Scalar::Max;
   using Scalar::isNumber;
   using Scalar::isSpecial;

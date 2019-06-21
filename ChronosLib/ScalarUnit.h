@@ -181,26 +181,21 @@ public:
     if (isSpecial()) return *this;
     // Handle mul by zero up front, both as an optimization and simplification.
     const UnitSeconds& m = rhs;
-    if (!m) return *this = ScalarUnit<>(0);
+    if (!m) return set(0, 0);
     UnitValue sss = value();
     UnitSeconds s = sss.s;
     UnitPicos ss = sss.ss;
     if (!s && !ss) return *this;
-    bool sNeg(s < 0), mNeg(s < 0), outNeg(sNeg == mNeg);
+    bool sNeg(s < 0), mNeg(m < 0), outNeg(sNeg != mNeg);
     // Multiply whole seconds, saturating to infinity on overflow.
-    if (s && mul128(s, m, s)) return overflow(outNeg);
+    int64_t notOver = outNeg ? -1 : 0;
+    if (s && mul128(s, m, s) != notOver) return overflow(outNeg);
     if (!ss) return set(s, ss);
-    // Multiply subseconds, then roll whole seconds over.
-    UnitPicos res, carry = mul128(ss, m, res);
-    UnitSeconds sOver = res / PicosPerSecond;
-    ss = res % PicosPerSecond;
-    if (carry) {
-      ss += div128(carry, 0, PicosPerSecond, res);
-      sOver += res;
-      if (!addSafely(s, sOver, s)) return overflow(outNeg);
-    }
-    m_adapter.value(UnitValue{s, ss});
-    return *this;
+    // Multiply subseconds, then convert to seconds.
+    UnitPicos quot, lo, hi = mul128(ss, m, lo);
+    ss = div128(hi, lo, PicosPerSecond, quot);
+    if (!addSafely(s, quot, s)) return overflow(outNeg);
+    return set(s, ss);
   }
 
   template<typename RepU, template<typename> class AdapterU>

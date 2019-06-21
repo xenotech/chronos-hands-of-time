@@ -112,9 +112,9 @@ struct RepAdapter : public SecondsTraits<> {
     }
   }
 
-  template<class CharT, class Traits>
-  auto dump(std::basic_ostream<CharT, Traits>& os) const -> decltype(os) {
-    return os << m_rep;
+  auto dump(std::ostream& os) const -> decltype(os) {
+    // return os << m_rep;
+    return Rep(m_rep).dump(os);
   }
 };
 

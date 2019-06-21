@@ -135,8 +135,7 @@ public:
   constexpr Fractions fractions() const noexcept { return m_fractions; }
   constexpr void fractions(Fractions f) noexcept { m_fractions = f; }
 
-  template<class CharT, class Traits>
-  auto dump(std::basic_ostream<CharT, Traits>& os) -> decltype(os) const {
+  auto dump(std::ostream& os) -> const decltype(os) {
     auto flagScope = StreamFlagsGuard(os, std::ios::hex);
     return os << static_cast<UnitSeconds>(wholes()) << "."
               << static_cast<UnitPicos>(fractions()) << " <" << sizeof(WholesT)

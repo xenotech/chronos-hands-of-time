@@ -73,11 +73,14 @@ constexpr int64_t addCarry(int64_t a, int64_t b, int64_t& c) noexcept {
 
 // Multiplies a by b, setting cLo to the low half of the answer and returning
 // the high half. This makes it easy to check for whether the answer is too
-// large to fit entirely in cLo.
+// large to fit entirely in cLo. But note that a negative result has a carry of
+// -1, not 0, due to sign extension.
 int64_t mul128(int64_t a, int64_t b, int64_t& cLo) {
   // TODO: Implement this conditionally for various compilers. It would be nice
   // if there were a way to make it constexpr without doing piecewise
-  // multiplication. Ditto for div128.
+  // multiplication. Ditto for div128. We could use the code at
+  // https://bit.ly/2J1tZEc to do the multiplication in constexpr, but it would
+  // be substantially more expensive when it's done at runtime.
   int64_t cHi;
   cLo = _mul128(a, b, &cHi);
   return cHi;
@@ -89,26 +92,22 @@ int64_t mul128(int64_t a, int64_t b, int64_t& cLo) {
 int64_t div128(int64_t dividendHi, int64_t dividendLo, int64_t divisor,
     int64_t& quotient) {
   int64_t remainder;
-  quotient = _div128(dividendHi, dividendHi, divisor, &remainder);
+  quotient = _div128(dividendHi, dividendLo, divisor, &remainder);
   return remainder;
 }
 
 using namespace std::string_view_literals;
 
 // Adapter to allow any dumpable object to be streamed out.
-//
-// TODO: Get support for wstream working.
-// https://stackoverflow.com/questions/52737760/how-to-define-string-literal-with-character-type-that-depends-on-template-parame
-// http://coliru.stacked-crooked.com/a/93b8892ef7e26492
-template<typename Dumpable, class CharT, class Traits>
-inline auto operator<<(::std::basic_ostream<CharT, Traits>& os,
-    const Dumpable& item) -> decltype(item.dump(os), os) {
+template<typename Dumpable>
+inline auto operator<<(::std::ostream& os, const Dumpable& item)
+    -> decltype(item.dump(os), os) {
   return item.dump(os);
 }
 
-template<typename Dumpable, class CharT, class Traits>
-inline auto operator<<(::std::basic_ostream<CharT, Traits>& os,
-    const Dumpable& item) -> decltype(dump(os, item), os) {
+template<typename Dumpable>
+inline auto operator<<(::std::ostream& os, const Dumpable& item)
+    -> decltype(dump(os, item), os) {
   return dump(os, item);
 }
 

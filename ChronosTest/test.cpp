@@ -114,7 +114,6 @@ TEST(StructuredBinding, ChronosTest) {
   }
 }
 
-
 TEST(NoCompile, ChronosTest) {
   static_assert(copy_allowed<int, int>::value);
   static_assert(!copy_allowed<int, std::string > ::value);
@@ -732,38 +731,126 @@ TEST(ScalarMath, ChronosTest) {
   EXPECT_EQ(m1.seconds(), 6);
   EXPECT_EQ(m2.seconds(), 7);
 
+  // 9223372036854775807
+  constexpr int64_t maxSigned = std::numeric_limits<int64_t>::max();
+
+  // -9223372036854775808
+  constexpr int64_t minSigned = std::numeric_limits<int64_t>::min();
+
+  // Correctly doesn't compile: m1 *= 3;
+
+  // This is not a Golden Master test: Wolfram Alpha was used to independently
+  // determine correct values.
+
+  // Positive subseconds times positive.
+  d1 = Duration<>(0, 3, 4);
+  d1 *= 3;
+  EXPECT_EQ(d1, Duration<>(2, 1, 4));
   d1 = Duration<>(1, 1, 2);
   d1 *= 3;
-  // Doesn't work: m1 *= 3;
-#if 0
-
   EXPECT_EQ(d1, Duration<>(4, 1, 2));
   d1 = Duration<>(4, 1, 2);
-  d1 *= Duration<>::Max;
+  d1 *= maxSigned;
   EXPECT_TRUE(d1.isPositiveInfinity());
+  d1 = Duration<>(0, 1);
+  d1 *= maxSigned;
+  // Max signed ms is 9223372,036854775807.
+  // No carry, just roll subseconds up.
+  EXPECT_EQ(d1, Duration<>(9223372, 36854775807));
+  d1 = Duration<>(0, 2);
+  d1 *= maxSigned;
+  // Double is 18446744,073709551614. So carry is 1.
+  EXPECT_EQ(d1, Duration<>(18446744, 73709551614));
+  d1 = Duration<>(0, 4);
+  d1 *= maxSigned;
+  // Quadruple is 36893488,147419103228.
+  EXPECT_EQ(d1, Duration<>(36893488, 147419103228));
+  d1 = Duration<>(0, 8);
+  d1 *= maxSigned;
+  // Octuple is 73786976,294838206456.
+  EXPECT_EQ(d1, Duration<>(73786976, 294838206456));
   d1 = Duration<>(0, 1, 2);
-  d1 *= Duration<>::Max;
-  EXPECT_TRUE(d1.isNaN());
+  d1 *= maxSigned;
+  // Half is 4611686018427387903.5s
+  EXPECT_EQ(d1, Duration<>(4611686018427387903, 1, 2));
+  d1 = Duration<>(1) - Duration<>(0, 1);
+  d1 *= maxSigned;
+  // Expectation is: 9223372036845552434,963145224193
+  EXPECT_EQ(d1, Duration<>(9223372036845552434, 963145224193));
+
+  // Positive subseconds time negative.
+  d1 = Duration<>(0, 3, 4);
+  d1 *= -3;
+  EXPECT_EQ(d1, Duration<>(-2, 1, 4));
+  d1 = Duration<>(1, 1, 2);
+  d1 *= -3;
+  EXPECT_EQ(d1, Duration<>(-4, 1, 2));
+  d1 = Duration<>(4, 1, 2);
+  d1 *= minSigned;
+  EXPECT_TRUE(d1.isNegativeInfinity());
+  d1 = Duration<>(0, 1);
+  d1 *= minSigned;
+  // Min signed ms is -9223372,036854775808.
+  // No carry, just roll subseconds up.
+  EXPECT_EQ(d1, Duration<>(-9223372, 36854775808));
+  d1 = Duration<>(0, 2);
+  d1 *= minSigned;
+  // Double is -18446744,073709551616. So borrow is -1.
+  EXPECT_EQ(d1, Duration<>(-18446744, 73709551616));
+  d1 = Duration<>(0, 4);
+  d1 *= minSigned;
+  // Quadruple is -36893488,147419103232.
+  EXPECT_EQ(d1, Duration<>(-36893488, 147419103232));
+  d1 = Duration<>(0, 8);
+  d1 *= minSigned;
+  // Octuple is -73786976,294838206464.
+  EXPECT_EQ(d1, Duration<>(-73786976, 294838206464));
+  d1 = Duration<>(0, 1, 2);
+  d1 *= minSigned;
+  // Half is -4611686018427387904s
+  EXPECT_EQ(d1, Duration<>(-4611686018427387904));
+  d1 = Duration<>(1) - Duration<>(0, 1);
+  d1 *= minSigned;
+  // Expectation is: -9223372036845552435,963145224192
+  EXPECT_EQ(d1, Duration<>(-9223372036845552435, 963145224192));
+
+  // Negative subseconds times positive.
+  d1 = Duration<>(0, -3, 4);
+  d1 *= 3;
+  EXPECT_EQ(d1, Duration<>(-2, 1, 4));
   d1 = Duration<>(-1, 1, 2);
   d1 *= 3;
   EXPECT_EQ(d1, Duration<>(-4, 1, 2));
-  d1 *= Duration<>::Max;
+  d1 = Duration<>(-4, 1, 2);
+  d1 *= maxSigned;
   EXPECT_TRUE(d1.isNegativeInfinity());
+  d1 = Duration<>(0, -1);
+  d1 *= maxSigned;
+  // Max signed ms is -9223372,036854775807.
+  // No carry, just roll subseconds up.
+  EXPECT_EQ(d1, Duration<>(-9223372, 36854775807));
+  d1 = Duration<>(0, -2);
+  d1 *= maxSigned;
+  // Double is -18446744,073709551614. So carry is 1.
+  EXPECT_EQ(d1, Duration<>(-18446744, 73709551614));
+  d1 = Duration<>(0, -4);
+  d1 *= maxSigned;
+  // Quadruple is -36893488,147419103228.
+  EXPECT_EQ(d1, Duration<>(-36893488, 147419103228));
+  d1 = Duration<>(0, -8);
+  d1 *= maxSigned;
+  // Octuple is -73786976,294838206456.
+  EXPECT_EQ(d1, Duration<>(-73786976, 294838206456));
   d1 = Duration<>(0, -1, 2);
-  d1 *= Duration<>::Max;
-  EXPECT_TRUE(d1.isNaN());
-#endif
-  cout << "!1! " << PicosPerSecond << endl;
-  cout << "!2! " << SecondsTraits<>::Max << endl;
-  cout << "!3! " << (SecondsTraits<>::Max * 1.0) / (PicosPerSecond * 1.0) << endl;
-  //!1!1000000000000
-    //!2!9223372036854775806
-    //!3!9.22337e+06
-
+  d1 *= maxSigned;
+  // Half is -4611686018427387903.5s
+  EXPECT_EQ(d1, Duration<>(-4611686018427387903, 1, 2));
+  d1 = Duration<>(-1) + Duration<>(0, 1);
+  d1 *= maxSigned;
+  // Expectation is: -9223372036845552434,963145224193
+  EXPECT_EQ(d1, Duration<>(-9223372036845552434, 963145224193));
 
   d1 = Duration<>(1) - Duration<>(0, 1);
-  // BUG HERE?!
-
 
   EXPECT_EQ(d1, Duration<>(0, PicosPerSecond - 1));
   //  EXPECT_TRUE(d1.isNumber());
